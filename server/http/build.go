@@ -1,7 +1,7 @@
 package http
 
 import (
-	"bitbucket.org/HeilaSystems/transport"
+	"bitbucket.org/HeilaSystems/transport/server"
 	"container/list"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -17,26 +17,26 @@ type httpServerSettings struct {
 type defaultHttpServerConfigBuilder struct {
 	ll *list.List
 }
-func Builder() transport.HttpBuilder{
+func Builder() server.HttpBuilder {
 	return &defaultHttpServerConfigBuilder{ll: list.New()}
 }
 
 
-func (d *defaultHttpServerConfigBuilder) SetPort(port string) transport.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) SetPort(port string) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
 		cfg.Port = &port
 	})
 	return d
 }
 
-func (d *defaultHttpServerConfigBuilder) SetWriteTimeout(duration time.Duration) transport.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) SetWriteTimeout(duration time.Duration) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
 		cfg.WriteTimeOut = &duration
 	})
 	return d
 }
 
-func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) transport.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
 		cfg.ReadTimeOut = &duration
 	})

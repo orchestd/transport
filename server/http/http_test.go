@@ -1,7 +1,7 @@
 package http
 
 import (
-	. "bitbucket.org/HeilaSystems/serviceerror"
+	. "bitbucket.org/HeilaSystems/servicereply"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -37,7 +37,7 @@ func (i TestInterface) Test(c context.Context,req TestReq)(TestRes, ServiceReply
 
 func Test_Main(t *testing.T) {
 	testHandler :=  func(router *gin.Engine,m TestInterface) {
-		router.GET("/",HandleFunc(m.Test))
+		router.GET("/", HandleFunc(m.Test))
 	}
 
 	convey.Convey("Given a test handler with empty request ",t, func() {

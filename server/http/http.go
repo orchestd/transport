@@ -2,9 +2,9 @@ package http
 
 import (
 	"bitbucket.org/HeilaSystems/helpers"
-	"bitbucket.org/HeilaSystems/serviceerror"
-	httpError "bitbucket.org/HeilaSystems/serviceerror/http"
 	"bitbucket.org/HeilaSystems/servicehelpers"
+	"bitbucket.org/HeilaSystems/servicereply"
+	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/contrib/gzip"
@@ -22,28 +22,28 @@ func HandleFunc( mFunction interface{}) func(context *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
 		if context.Request.Method != "GET" && context.Request.Method != "DELETE" {
 			if err := context.ShouldBindJSON(&newH); err != nil {
-				internalError := serviceerror.NewBadRequestError(err).WithLogMessage("Cannot parse request to struct")
+				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
 				GinErrorReply(context, internalError)
 				return
 			}
 		}
 
-		exec := func() (interface{}, serviceerror.ServiceReply) {
+		exec := func() (interface{}, servicereply.ServiceReply) {
 			c := reflect.ValueOf(context)
 			req := reflect.Indirect(reflect.ValueOf(newH))
 			if !IsFunc(mFunction) {
-				return nil, serviceerror.NewBadRequestError(nil).WithLogMessage("mFunction must be a function")
+				return nil, servicereply.NewInternalServiceError(nil).WithLogMessage("mFunction must be a function")
 			}
 			reflect.ValueOf(mFunction)
 			responseArr := reflect.ValueOf(mFunction).Call([]reflect.Value{c, req})
 			if len(responseArr) == 2 {
 				if !responseArr[1].IsNil() {
-					return responseArr[0].Interface(), responseArr[1].Interface().(serviceerror.ServiceReply)
+					return responseArr[0].Interface(), responseArr[1].Interface().(servicereply.ServiceReply)
 				}
 				return responseArr[0].Interface(), nil
 			} else {
 				err := fmt.Errorf("invalid response")
-				return nil, serviceerror.NewBadRequestError(err)
+				return nil, servicereply.NewInternalServiceError(err)
 			}
 		}
 
@@ -74,12 +74,12 @@ func IsFunc(v interface{}) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Func
 }
 
-func GinErrorReply(c *gin.Context, err serviceerror.ServiceReply) {
+func GinErrorReply(c *gin.Context, err servicereply.ServiceReply) {
 
 	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate})
-	serviceReply := serviceerror.Response{}
+	serviceReply := servicereply.Response{}
 	serviceReply.Status = servicehelpers.ServiceStatusError
-	serviceReply.Message = &serviceerror.Message{
+	serviceReply.Message = &servicereply.Message{
 		Id:  err.GetUserError(),
 		Values: err.GetReplyValues(),
 	}
@@ -87,7 +87,7 @@ func GinErrorReply(c *gin.Context, err serviceerror.ServiceReply) {
 }
 
 func GinSuccessReply(c *gin.Context, reply interface{}) {
-	serviceReply := serviceerror.Response{}
+	serviceReply := servicereply.Response{}
 	serviceReply.Status = servicehelpers.ServiceStatusSuccess
 	serviceReply.Data = reply
 	c.JSON(http.StatusOK, serviceReply)
