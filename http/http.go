@@ -28,7 +28,7 @@ func HandleFunc( mFunction interface{}) func(context *gin.Context) {
 			}
 		}
 
-		exec := func() (interface{}, serviceerror.ServiceError) {
+		exec := func() (interface{}, serviceerror.ServiceReply) {
 			c := reflect.ValueOf(context)
 			req := reflect.Indirect(reflect.ValueOf(newH))
 			if !IsFunc(mFunction) {
@@ -38,7 +38,7 @@ func HandleFunc( mFunction interface{}) func(context *gin.Context) {
 			responseArr := reflect.ValueOf(mFunction).Call([]reflect.Value{c, req})
 			if len(responseArr) == 2 {
 				if !responseArr[1].IsNil() {
-					return responseArr[0].Interface(), responseArr[1].Interface().(serviceerror.ServiceError)
+					return responseArr[0].Interface(), responseArr[1].Interface().(serviceerror.ServiceReply)
 				}
 				return responseArr[0].Interface(), nil
 			} else {
@@ -74,30 +74,26 @@ func IsFunc(v interface{}) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Func
 }
 
-func GinErrorReply(c *gin.Context, err serviceerror.ServiceError) {
+func GinErrorReply(c *gin.Context, err serviceerror.ServiceReply) {
 
 	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate})
-	serviceReply := serviceerror.ServiceReply{}
+	serviceReply := serviceerror.Response{}
 	serviceReply.Status = servicehelpers.ServiceStatusError
-	serviceReply.Error = &serviceerror.BaseServiceErrorReply{
-		Msg:  err.GetUserError(),
-		Type: err.GetErrorType(),
-	}
-	if err.GetReplyValues() != nil {
-		serviceReply.Data = err.GetReplyValues()
+	serviceReply.Message = &serviceerror.Message{
+		Id:  err.GetUserError(),
+		Values: err.GetReplyValues(),
 	}
 	c.JSON(httpError.GetHttpCode(err.GetErrorType()), serviceReply)
 }
 
 func GinSuccessReply(c *gin.Context, reply interface{}) {
-	serviceReply := serviceerror.ServiceReply{}
+	serviceReply := serviceerror.Response{}
 	serviceReply.Status = servicehelpers.ServiceStatusSuccess
 	serviceReply.Data = reply
 	c.JSON(http.StatusOK, serviceReply)
 }
 
 func NewGinRouter() (*gin.Engine, error) {
-
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	// Very important !
@@ -111,18 +107,33 @@ func NewGinRouter() (*gin.Engine, error) {
 	return router,nil
 }
 
-func NewGinServer(lc fx.Lifecycle) *gin.Engine {
-	//if appConf == nil {
-	//	return fmt.Errorf("must init logger")
-	//}
-	//nilHc.LogInfof("Running on port %v", appConf.ListenOnPort)
+const (
+	defaultPort = "8080"
+	defaultTimeout =  30 * time.Second
+)
+
+func NewGinServer(lc fx.Lifecycle,port  *string, readTimeout ,WriteTimeout *time.Duration) *gin.Engine {
+
+	if port == nil {
+		p := defaultPort
+		port = &p
+	}
+	if readTimeout == nil {
+		t := defaultTimeout
+		readTimeout = &t
+	}
+	if WriteTimeout == nil {
+		t := defaultTimeout
+		WriteTimeout = &t
+	}
 	h ,_ := NewGinRouter()
+
 	s := &http.Server{
 
-		Addr:         ":" + "8080",//appConf.ListenOnPort,
+		Addr:         ":" + *port,//appConf.ListenOnPort,
 		Handler:      h,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,//getHttpRespTimeoutSeconds(appConf),
+		ReadTimeout:  *readTimeout,
+		WriteTimeout: *WriteTimeout,//getHttpRespTimeoutSeconds(appConf),
 	}
 
 	lc.Append(fx.Hook{
@@ -133,7 +144,7 @@ func NewGinServer(lc fx.Lifecycle) *gin.Engine {
 		OnStart: func(ctx context.Context) error {
 			// In production, we'd want to separate the Listen and Serve phases for
 			// better error-handling.
-			go s.ListenAndServe()
+			s.ListenAndServe()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

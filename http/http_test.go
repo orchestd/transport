@@ -31,7 +31,7 @@ type TestRes struct {
 	Hello string `json:"hello"`
 }
 
-func (i TestInterface) Test(c context.Context,req TestReq)(TestRes, ServiceError){
+func (i TestInterface) Test(c context.Context,req TestReq)(TestRes, ServiceReply){
 	return TestRes{Hello: "world"},nil
 }
 
