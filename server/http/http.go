@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/HeilaSystems/servicehelpers"
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
+	"bitbucket.org/HeilaSystems/servicereply/status"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/contrib/gzip"
@@ -77,18 +78,18 @@ func IsFunc(v interface{}) bool {
 func GinErrorReply(c *gin.Context, err servicereply.ServiceReply) {
 
 	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate})
-	serviceReply := servicereply.Response{}
-	serviceReply.Status = servicehelpers.ServiceStatusError
-	serviceReply.Message = &servicereply.Message{
+	Response := servicereply.Response{}
+	Response.Status = status.GetStatus(err.GetErrorType())
+	Response.Message = &servicereply.Message{
 		Id:  err.GetUserError(),
 		Values: err.GetReplyValues(),
 	}
-	c.JSON(httpError.GetHttpCode(err.GetErrorType()), serviceReply)
+	c.JSON(httpError.GetHttpCode(err.GetErrorType()), Response)
 }
 
 func GinSuccessReply(c *gin.Context, reply interface{}) {
 	serviceReply := servicereply.Response{}
-	serviceReply.Status = servicehelpers.ServiceStatusSuccess
+	serviceReply.Status = status.SuccessStatus
 	serviceReply.Data = reply
 	c.JSON(http.StatusOK, serviceReply)
 }
