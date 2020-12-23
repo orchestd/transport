@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	bitbucket.org/HeilaSystems/helpers v1.21.1
-	bitbucket.org/HeilaSystems/servicehelpers v1.100.2
 	bitbucket.org/HeilaSystems/servicereply v0.0.1
 	github.com/gin-gonic/contrib v0.0.0-20201101042839-6a891bf89f19
 	github.com/gin-gonic/gin v1.6.3

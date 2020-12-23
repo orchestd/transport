@@ -2,7 +2,6 @@ package http
 
 import (
 	"bitbucket.org/HeilaSystems/helpers"
-	"bitbucket.org/HeilaSystems/servicehelpers"
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"bitbucket.org/HeilaSystems/servicereply/status"
@@ -98,7 +97,7 @@ func NewGinRouter() (*gin.Engine, error) {
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	// Very important !
-	router.Use(servicehelpers.RequestId())
+	//router.Use(servicehelpers.RequestId())
 	// Recovery middleware
 	router.Use(gin.Recovery())
 	//router.Use(GinLog())
