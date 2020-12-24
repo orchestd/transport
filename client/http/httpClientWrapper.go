@@ -40,7 +40,7 @@ func NewHttpClientWrapper(client *http.Client) client.HttpClient {
 	return &httpClientWrapper{client: client}
 }
 
-func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) ServiceReply  {
+func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) (srvReply ServiceReply)  {
 	b , sErr := getPayload(payload)
 	if sErr != nil{
 		return sErr
@@ -72,8 +72,19 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 		}
 		if srvError.Status != status.SuccessStatus {
 			resType := status.GetTypeByStatus(srvError.GetStatus())
-			msg := srvError.GetMessageId()
-			return NewServiceError( &resType, nil,msg,1 )
+			msgValues := srvError.GetMessageValues()
+			srvReply = NewServiceError( &resType, nil,srvError.GetMessageId(),1 )
+			if msgValues != nil {
+				srvReply = srvReply.WithReplyValues(*msgValues)
+			}
+			return srvReply
+		}
+		if srvError.Message != nil {
+			msgValues := srvError.GetMessageValues()
+			srvReply = NewMessage(srvError.GetMessageId())
+			if msgValues != nil {
+				srvReply = srvReply.WithReplyValues(*msgValues)
+			}
 		}
 		if srvError.Data != nil {
 			if dataJson  ,err := json.Marshal(srvError.Data);err != nil {
@@ -86,7 +97,7 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 	if err := unmarshalDataToStruct(body , target);err != nil {
 		return err
 	}
-	return nil
+	return
 }
 func unmarshalDataToStruct(data []byte,target interface{}) ServiceReply  {
 	if err := json.Unmarshal(data, &target); err != nil {
