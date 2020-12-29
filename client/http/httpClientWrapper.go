@@ -41,6 +41,7 @@ func NewHttpClientWrapper(client *http.Client) client.HttpClient {
 }
 
 func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) (srvReply ServiceReply)  {
+	srvReply = NewNil()
 	b , sErr := getPayload(payload)
 	if sErr != nil{
 		return sErr
@@ -99,6 +100,7 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 	}
 	return
 }
+
 func unmarshalDataToStruct(data []byte,target interface{}) ServiceReply  {
 	if err := json.Unmarshal(data, &target); err != nil {
 		return NewInternalServiceError( err).WithLogMessage("cannot read response")
