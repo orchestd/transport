@@ -118,7 +118,6 @@ const (
 )
 
 func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, interceptors ...gin.HandlerFunc) *gin.Engine {
-
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -182,14 +181,6 @@ func IsAliveGinHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS , PATCH")
 	c.Header("Access-Control-Allow-Credentials", "true")
 	c.Writer.Write([]byte("yes"))
-}
-
-func log() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Println("Hello")
-		c.Next()
-		fmt.Println("Bye" , c.Writer.Status())
-	}
 }
 
 type HttpLog struct {
