@@ -4,12 +4,10 @@ import (
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"bitbucket.org/HeilaSystems/servicereply/status"
-	"bitbucket.org/HeilaSystems/transport/server"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
-	adapter "github.com/gwatts/gin-adapter"
 	"go.uber.org/fx"
 	"net/http"
 	"reflect"
@@ -26,14 +24,8 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 				return
 			}
 		}
-		tc := ginCtx.Request.Context()
-		for k, v := range ginCtx.Request.Header {
-			if len(v[0])>0 {
-				tc = context.WithValue(tc, k, v[0])
-			}
-		}
 		exec := func() (interface{}, servicereply.ServiceReply) {
-			c := reflect.ValueOf(tc)
+			c := reflect.ValueOf(ginCtx)
 			req := reflect.Indirect(reflect.ValueOf(newH))
 			if !IsFunc(mFunction) {
 				return nil, servicereply.NewInternalServiceError(nil).WithLogMessage("mFunction must be a function")
@@ -77,8 +69,15 @@ func IsFunc(v interface{}) bool {
 }
 
 func GinErrorReply(c *gin.Context, err servicereply.ServiceReply) {
+	var httpLogVal = HttpLog{
+		Source:     err.GetSource(),
+		Action:     err.GetActionLog(),
+		LogMessage: err.GetLogMessage(),
+		LogValues:  err.GetLogValues(),
+	}
+	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate, Meta: httpLogVal})
 
-	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate})
+
 	Response := servicereply.Response{}
 	Response.Status = status.GetStatus(err.GetErrorType())
 	Response.Message = &servicereply.Message{
@@ -95,18 +94,21 @@ func GinSuccessReply(c *gin.Context, reply interface{}) {
 	c.JSON(http.StatusOK, serviceReply)
 }
 
-func NewGinRouter(interceptors ...server.HttpServerInterceptors) (*gin.Engine, error) {
+func NewGinRouter(interceptors ...gin.HandlerFunc) (*gin.Engine, error) {
 	router := gin.New()
-	router.Use(gzip.Gzip(gzip.DefaultCompression)) // gzip compression
-	router.Use(gin.Recovery())                     //recovery middleware
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
-				router.Use(adapter.Wrap(interceptor))
+				router.Use(interceptor)
 			}
 		}
 	}
+	router.Use(gzip.Gzip(gzip.DefaultCompression)) // gzip compression
+	router.Use(gin.Recovery())
+
+	//recovery middleware
 	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
+
 	return router, nil
 }
 
@@ -115,7 +117,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, interceptors ...server.HttpServerInterceptors) *gin.Engine {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, interceptors ...gin.HandlerFunc) *gin.Engine {
 
 	if port == nil {
 		p := defaultPort
@@ -182,10 +184,40 @@ func IsAliveGinHandler(c *gin.Context) {
 	c.Writer.Write([]byte("yes"))
 }
 
-func middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func log() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		fmt.Println("Hello")
-		next.ServeHTTP(w, r)
-		fmt.Println("Bye")
-	})
+		c.Next()
+		fmt.Println("Bye" , c.Writer.Status())
+	}
+}
+
+type HttpLog struct {
+	Source string `json:"source"`
+	Action string `json:"action"`
+	LogMessage *string `json:"logMessage"`
+	LogValues map[string]interface{} `json:"logValues"`
+}
+
+func (h HttpLog) GetSource() string {
+	return h.Source
+}
+
+func (h HttpLog) GetAction() string {
+	return h.Action
+}
+
+func (h HttpLog) GetLogMessage() *string {
+	return h.LogMessage
+}
+
+func (h HttpLog) GetLogValues() map[string]interface{} {
+	return h.LogValues
+}
+
+type IHttpLog interface {
+	GetSource()string
+	GetAction()string
+	GetLogMessage()*string
+	GetLogValues()map[string]interface{}
 }

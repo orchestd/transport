@@ -12,7 +12,7 @@ type httpServerSettings struct {
 	Port *string
 	WriteTimeOut *time.Duration
 	ReadTimeOut *time.Duration
-	interceptors []server.HttpServerInterceptors
+	interceptors []gin.HandlerFunc
 }
 
 type defaultHttpServerConfigBuilder struct {
@@ -44,7 +44,7 @@ func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) 
 	return d
 }
 
-func (d *defaultHttpServerConfigBuilder) AddInterceptors(interceptors ...server.HttpServerInterceptors) server.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) AddInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
 		cfg.interceptors = interceptors
 	})
