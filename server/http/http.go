@@ -6,14 +6,29 @@ import (
 	"bitbucket.org/HeilaSystems/servicereply/status"
 	"context"
 	"fmt"
-	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"net/http"
 	"reflect"
 	"time"
 )
-
+//func CallAlternativeMethodByTypeName(alternativeName string ,mFunction interface{}, newH interface{} , ginContext *gin.Context) (interface{} , servicereply.ServiceReply){
+//	c := reflect.ValueOf(ginContext)
+//	req := reflect.Indirect(reflect.ValueOf(newH))
+//	if !IsFunc(mFunction) {
+//		return nil, servicereply.NewInternalServiceError(nil).WithLogMessage("mFunction must be a function")
+//	}
+//	responseArr := reflect.ValueOf(getHandlerRequestStruct(mFunction)).MethodByName("Test_Test").Call([]reflect.Value{c, req})
+//	if len(responseArr) == 2 {
+//		if !responseArr[1].IsNil() {
+//			return responseArr[0].Interface(), responseArr[1].Interface().(servicereply.ServiceReply)
+//		}
+//		return responseArr[0].Interface(), nil
+//	} else {
+//		err := fmt.Errorf("invalid response")
+//		return nil, servicereply.NewInternalServiceError(err)
+//	}
+//}
 func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 	return func(ginCtx *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
@@ -47,12 +62,6 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		} else {
 			GinSuccessReply(ginCtx, response)
 		}
-		//else if hc.RedirectUrl != "" {
-		//	GinRedirectReply(hc)
-		//} else if !hc.ReplyOverridden {
-		//	GinSuccessReply(hc, response)
-		//}
-
 	}
 }
 
@@ -103,7 +112,7 @@ func NewGinRouter(interceptors ...gin.HandlerFunc) (*gin.Engine, error) {
 			}
 		}
 	}
-	router.Use(gzip.Gzip(gzip.DefaultCompression)) // gzip compression
+	//router.Use(gzip.Gzip(gzip.DefaultCompression)) // gzip compression
 	router.Use(gin.Recovery())
 
 	//recovery middleware
@@ -148,8 +157,7 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		OnStart: func(ctx context.Context) error {
 			// In production, we'd want to separate the Listen and Serve phases for
 			// better error-handling.
-			s.ListenAndServe()
-			return nil
+			return s.ListenAndServe()
 		},
 		OnStop: func(ctx context.Context) error {
 			return s.Shutdown(ctx)

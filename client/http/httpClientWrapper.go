@@ -41,14 +41,16 @@ func NewHttpClientWrapper(client *http.Client) client.HttpClient {
 }
 
 func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) (srvReply ServiceReply)  {
+	url := fmt.Sprintf("http://%s/%s", host, handler)
+
 	srvReply = NewNil()
-	b , sErr := getPayload(payload)
+	b , sErr := getPayload(payload , url)
 	if sErr != nil{
 		return sErr
 	}
-	req, err := http.NewRequest(httpMethod,fmt.Sprintf("http://%s/%s", host, handler),  b)
+	req, err := http.NewRequest(httpMethod,url,  b)
 	if err != nil {
-		return NewInternalServiceError( err).WithLogMessage("Cannot marshal request")
+		return NewInternalServiceError( err).WithLogMessage(fmt.Sprintf("Cannot marshal request to %s" , url))
 	}
 	req = req.WithContext(c)
 	req.Header.Add("Content-Type", "application/json")
@@ -58,18 +60,18 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		return NewIoError(err).WithLogMessage("cannot emmit post request")
+		return NewIoError(err).WithLogMessage(fmt.Sprintf("couldn't send %s request to %s" , httpMethod,url))
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return NewInternalServiceError( err).WithLogMessage("cannot read response")
+		return NewInternalServiceError( err).WithLogMessage(fmt.Sprintf("cannot read response from %s",url) )
 	}
 	if internal {
 		var srvError Response
 		if err := json.Unmarshal(body, &srvError); err != nil {
-			return NewInternalServiceError(err).WithLogMessage("cannot read response")
+			return NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("cannot read response from %s",url)).WithLogValues(ValuesMap{"rawResponse" : string(body)})
 		}
 		if srvError.Status != status.SuccessStatus {
 			resType := status.GetTypeByStatus(srvError.GetStatus())
@@ -89,29 +91,37 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 		}
 		if srvError.Data != nil {
 			if dataJson  ,err := json.Marshal(srvError.Data);err != nil {
-				return NewInternalServiceError(err)
+				return NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("cannot marshal data from %s",url))
 			}else {
 				body = dataJson
 			}
+		} else {
+			body = nil
 		}
 	}
-	if err := unmarshalDataToStruct(body , target);err != nil {
+	if err := unmarshalDataToStruct(body , target,url);err != nil {
 		return err
 	}
 	return
 }
 
-func unmarshalDataToStruct(data []byte,target interface{}) ServiceReply  {
+func unmarshalDataToStruct(data []byte,target interface{},logStrings ...interface{}) ServiceReply  {
+	if target == nil{
+		return nil
+	}
+	if data == nil {
+		return NewInternalServiceError(nil).WithLogMessage(fmt.Sprintf("Cannot unmarshal empty response from %s to target struct",logStrings...))
+	}
 	if err := json.Unmarshal(data, &target); err != nil {
-		return NewInternalServiceError( err).WithLogMessage("cannot read response")
+		return NewInternalServiceError(err).WithLogMessage("cannot read response")
 	}
 	return nil
 }
-func getPayload(payload interface{}) (*bytes.Buffer,ServiceReply) {
+func getPayload(payload interface{},url string) (*bytes.Buffer,ServiceReply) {
 	if payload != nil {
 		request, err := json.Marshal(payload)
 		if err != nil {
-			return nil, NewInternalServiceError( err).WithLogMessage("Cannot marshal request")
+			return nil, NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("cannot read response from %s",url)).WithLogValues(ValuesMap{"rawResponse" : payload})
 		}
 		return bytes.NewBuffer(request) , nil
 	}
