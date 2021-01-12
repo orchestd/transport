@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type httpClientWrapper struct {
@@ -44,7 +45,7 @@ func NewHttpClientWrapper(client *http.Client ,conf  configuration.Config) (clie
 
 func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) (srvReply ServiceReply)  {
 	url := fmt.Sprintf("http://%s/%s", host, handler)
-	if overrideHost , err := h.conf.Get(host+urlKeyword).String();err == nil && len(overrideHost) >0 {
+	if overrideHost := os.Getenv(host+urlKeyword); len(overrideHost) > 0 {
 		url = fmt.Sprintf("%s/%s" , overrideHost, handler)
 	}
 	srvReply = NewNil()
