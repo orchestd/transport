@@ -9,7 +9,9 @@ import (
 func ContextValuesToHeaders(extractedHeaders []string) client.HTTPClientInterceptor {
 	return func(req *http.Request, handler client.HTTPHandler) (*http.Response, error) {
 		for _, header := range extractedHeaders {
-			req.Header.Add(header,	fmt.Sprint(req.Context().Value(header)))
+			if val := req.Context().Value(header);val != nil {
+				req.Header.Add(header,fmt.Sprint(val))
+			}
 		}
 		res, err := handler(req)
 		return res, err

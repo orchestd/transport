@@ -1,6 +1,9 @@
 package client
 
-import "net/http"
+import (
+	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
+	"net/http"
+)
 
 // HTTPHandler is just an alias to http.RoundTriper.RoundTrip function
 type HTTPHandler func(*http.Request) (*http.Response, error)
@@ -11,9 +14,10 @@ type HTTPClientInterceptor func(*http.Request, HTTPHandler) (*http.Response, err
 
 // HTTPClientBuilder is a builder interface to build http.Client with interceptors
 type HTTPClientBuilder interface {
+	SetConfig(conf configuration.Config) HTTPClientBuilder
 	AddInterceptors(...HTTPClientInterceptor) HTTPClientBuilder
 	WithPreconfiguredClient(*http.Client) HTTPClientBuilder
-	Build() HttpClient
+	Build() (HttpClient,error)
 }
 
 // NewHTTPClientBuilder REST HTTP builder

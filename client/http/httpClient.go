@@ -1,14 +1,17 @@
 package http
 
 import (
+	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
 	"bitbucket.org/HeilaSystems/transport/client"
 	"container/list"
+	"fmt"
 	"net/http"
 )
 
 type httpClientBuilderConfig struct {
 	predefinedClient *http.Client
 	interceptors     []client.HTTPClientInterceptor
+	conf configuration.Config
 }
 
 type builderImpl struct {
@@ -20,6 +23,14 @@ func HTTPClientBuilder() client.HTTPClientBuilder {
 		ll: list.New(),
 	}
 }
+
+func (impl *builderImpl) SetConfig(conf configuration.Config) client.HTTPClientBuilder {
+	impl.ll.PushBack(func(cfg *httpClientBuilderConfig) {
+		cfg.conf = conf
+	})
+	return impl
+}
+
 
 func (impl *builderImpl) AddInterceptors(interceptors ...client.HTTPClientInterceptor) client.HTTPClientBuilder {
 	impl.ll.PushBack(func(cfg *httpClientBuilderConfig) {
@@ -37,24 +48,30 @@ func (impl *builderImpl) WithPreconfiguredClient(client *http.Client) client.HTT
 	return impl
 }
 
-func (impl *builderImpl) Build() client.HttpClient {
+func (impl *builderImpl) Build() (client.HttpClient,error) {
 	var client = &http.Client{}
+	var conf configuration.Config
 	if impl != nil {
 		cfg := new(httpClientBuilderConfig)
 		for e := impl.ll.Front(); e != nil; e = e.Next() {
 			f := e.Value.(func(cfg *httpClientBuilderConfig))
 			f(cfg)
 		}
-
+		if cfg.conf == nil {
+			return nil, fmt.Errorf("Cannot initialize Http client without configuration dependency")
+		}
+		conf = cfg.conf
 		if cfg.predefinedClient != nil {
 			client = cfg.predefinedClient
 		}
 		if client.Transport == nil {
 			client.Transport = http.DefaultTransport
 		}
+
+
 		client.Transport = prepareCustomRoundTripper(client.Transport, cfg.interceptors...)
 	}
-	return NewHttpClientWrapper(client)
+	return NewHttpClientWrapper(client,conf)
 }
 
 type customRoundTripper struct {

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
 	. "bitbucket.org/HeilaSystems/servicereply"
 	"bitbucket.org/HeilaSystems/servicereply/status"
 	"bitbucket.org/HeilaSystems/transport/client"
@@ -14,6 +15,7 @@ import (
 
 type httpClientWrapper struct {
 	client *http.Client
+	conf configuration.Config
 }
 
 func (h *httpClientWrapper) Call(c context.Context,payload interface{},host, handler string,target interface{},headers map[string]string) ServiceReply {
@@ -36,13 +38,15 @@ func (h *httpClientWrapper) Delete(c context.Context,host, handler string,target
 	return h.do(c,http.MethodDelete,nil,host,handler,target,headers,false)
 }
 
-func NewHttpClientWrapper(client *http.Client) client.HttpClient {
-	return &httpClientWrapper{client: client}
+func NewHttpClientWrapper(client *http.Client ,conf  configuration.Config) (client.HttpClient,error) {
+	return &httpClientWrapper{client: client, conf: conf},nil
 }
 
 func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload interface{},host, handler string,target interface{},headers map[string]string,internal bool) (srvReply ServiceReply)  {
 	url := fmt.Sprintf("http://%s/%s", host, handler)
-
+	if overrideHost , err := h.conf.Get(host+urlKeyword).String();err == nil && len(overrideHost) >0 {
+		url = fmt.Sprintf("%s/%s" , overrideHost, handler)
+	}
 	srvReply = NewNil()
 	b , sErr := getPayload(payload , url)
 	if sErr != nil{
@@ -128,3 +132,4 @@ func getPayload(payload interface{},url string) (*bytes.Buffer,ServiceReply) {
 	return nil,nil
 }
 
+const urlKeyword = "Url"
