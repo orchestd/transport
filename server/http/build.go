@@ -12,6 +12,7 @@ type httpServerSettings struct {
 	Port *string
 	WriteTimeOut *time.Duration
 	ReadTimeOut *time.Duration
+	contextInterceptors []gin.HandlerFunc
 	interceptors []gin.HandlerFunc
 }
 
@@ -44,6 +45,13 @@ func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) 
 	return d
 }
 
+func (d *defaultHttpServerConfigBuilder) AddContextInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
+	d.ll.PushBack(func(cfg *httpServerSettings) {
+		cfg.contextInterceptors = interceptors
+	})
+	return d
+}
+
 func (d *defaultHttpServerConfigBuilder) AddInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
 		cfg.interceptors = interceptors
@@ -57,7 +65,7 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 		f := e.Value.(func(cfg *httpServerSettings))
 		f(httpCfg)
 	}
-	return NewGinServer(lc , httpCfg.Port,httpCfg.WriteTimeOut,httpCfg.ReadTimeOut,httpCfg.interceptors...)
+	return NewGinServer(lc , httpCfg.Port,httpCfg.WriteTimeOut,httpCfg.ReadTimeOut,httpCfg.contextInterceptors,httpCfg.interceptors)
 }
 
 

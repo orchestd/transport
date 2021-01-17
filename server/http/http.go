@@ -39,8 +39,9 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 				return
 			}
 		}
+
 		exec := func() (interface{}, servicereply.ServiceReply) {
-			c := reflect.ValueOf(ginCtx)
+			c := reflect.ValueOf(ginCtx.Request.Context())
 			req := reflect.Indirect(reflect.ValueOf(newH))
 			if !IsFunc(mFunction) {
 				return nil, servicereply.NewInternalServiceError(nil).WithLogMessage("mFunction must be a function")
@@ -103,8 +104,15 @@ func GinSuccessReply(c *gin.Context, reply interface{}) {
 	c.JSON(http.StatusOK, serviceReply)
 }
 
-func NewGinRouter(interceptors ...gin.HandlerFunc) (*gin.Engine, error) {
+func NewGinRouter(contextInterceptors []gin.HandlerFunc , interceptors []gin.HandlerFunc) (*gin.Engine, error) {
 	router := gin.New()
+	if len(contextInterceptors) > 0 {
+		for _, interceptor := range contextInterceptors {
+			if interceptor != nil {
+				router.Use(interceptor)
+			}
+		}
+	}
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
@@ -126,7 +134,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, interceptors ...gin.HandlerFunc) *gin.Engine {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, contextInterceptors,interceptors []gin.HandlerFunc) *gin.Engine {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -139,7 +147,7 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		t := defaultTimeout
 		WriteTimeout = &t
 	}
-	h, _ := NewGinRouter(interceptors...)
+	h, _ := NewGinRouter(contextInterceptors,interceptors)
 
 	s := &http.Server{
 

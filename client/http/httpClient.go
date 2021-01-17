@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
 	"bitbucket.org/HeilaSystems/transport/client"
 	"container/list"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 )
@@ -65,7 +66,8 @@ func (impl *builderImpl) Build() (client.HttpClient,error) {
 			client = cfg.predefinedClient
 		}
 		if client.Transport == nil {
-			client.Transport = http.DefaultTransport
+			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+			client.Transport =	http.DefaultTransport
 		}
 
 
