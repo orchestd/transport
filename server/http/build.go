@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
 	"bitbucket.org/HeilaSystems/transport/server"
 	"container/list"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ type httpServerSettings struct {
 	Port *string
 	WriteTimeOut *time.Duration
 	ReadTimeOut *time.Duration
+	Logger log.Logger
 	contextInterceptors []gin.HandlerFunc
 	interceptors []gin.HandlerFunc
 }
@@ -44,6 +46,12 @@ func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) 
 	})
 	return d
 }
+func (d *defaultHttpServerConfigBuilder) SetLogger(logger log.Logger) server.HttpBuilder {
+	d.ll.PushBack(func(cfg *httpServerSettings) {
+		cfg.Logger = logger
+	})
+	return d
+}
 
 func (d *defaultHttpServerConfigBuilder) AddContextInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *httpServerSettings) {
@@ -65,7 +73,7 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 		f := e.Value.(func(cfg *httpServerSettings))
 		f(httpCfg)
 	}
-	return NewGinServer(lc , httpCfg.Port,httpCfg.WriteTimeOut,httpCfg.ReadTimeOut,httpCfg.contextInterceptors,httpCfg.interceptors)
+	return NewGinServer(lc , httpCfg.Port,httpCfg.WriteTimeOut,httpCfg.ReadTimeOut,httpCfg.Logger,httpCfg.contextInterceptors,httpCfg.interceptors)
 }
 
 

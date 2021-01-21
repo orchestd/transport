@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"bitbucket.org/HeilaSystems/servicereply/status"
@@ -134,7 +135,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, contextInterceptors,interceptors []gin.HandlerFunc) *gin.Engine {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, contextInterceptors,interceptors []gin.HandlerFunc) *gin.Engine {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -165,9 +166,15 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		OnStart: func(ctx context.Context) error {
 			// In production, we'd want to separate the Listen and Serve phases for
 			// better error-handling.
+			if logger != nil {
+				logger.Info(ctx , "HTTP service listening on port %s" , *port)
+			}
 			return s.ListenAndServe()
 		},
 		OnStop: func(ctx context.Context) error {
+			if logger != nil {
+				logger.Info(ctx , "Shuting service down")
+			}
 			return s.Shutdown(ctx)
 		},
 	})
