@@ -36,7 +36,7 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" {
 			if err := ginCtx.ShouldBindJSON(&newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
-				GinErrorReply(ginCtx, internalError)
+				GinErrorReply(ginCtx, internalError,nil)
 				return
 			}
 		}
@@ -60,7 +60,7 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		}
 
 		if response, err := exec(); err != nil {
-			GinErrorReply(ginCtx, err)
+			GinErrorReply(ginCtx, err,response)
 		} else {
 			GinSuccessReply(ginCtx, response)
 		}
@@ -79,7 +79,7 @@ func IsFunc(v interface{}) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Func
 }
 
-func GinErrorReply(c *gin.Context, err servicereply.ServiceReply) {
+func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{} ) {
 	var httpLogVal = HttpLog{
 		Source:     err.GetSource(),
 		Action:     err.GetActionLog(),
@@ -94,6 +94,9 @@ func GinErrorReply(c *gin.Context, err servicereply.ServiceReply) {
 	Response.Message = &servicereply.Message{
 		Id:     err.GetUserError(),
 		Values: err.GetReplyValues(),
+	}
+	if err.IsSuccess() && res != nil {
+		Response.Data = res
 	}
 	c.JSON(httpError.GetHttpCode(err.GetErrorType()), Response)
 }
