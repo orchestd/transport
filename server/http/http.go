@@ -80,6 +80,15 @@ func IsFunc(v interface{}) bool {
 }
 
 func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{} ) {
+	statuserr := status.GetStatus(err.GetErrorType())
+	if statuserr != status.SuccessStatus {
+		statusCtx := context.WithValue(c.Request.Context(),"status",statuserr)
+		c.Request = c.Request.WithContext(statusCtx)
+		if len(err.GetUserError()) > 0 {
+			messageCtx := context.WithValue(c.Request.Context(),"userMessageId",err.GetUserError())
+			c.Request = c.Request.WithContext(messageCtx)
+		}
+	}
 	var httpLogVal = HttpLog{
 		Source:     err.GetSource(),
 		Action:     err.GetActionLog(),
@@ -88,9 +97,9 @@ func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{}
 	}
 	c.Errors = append(c.Errors, &gin.Error{Err: err.GetError(), Type: gin.ErrorTypePrivate, Meta: httpLogVal})
 
-
 	Response := servicereply.Response{}
 	Response.Status = status.GetStatus(err.GetErrorType())
+
 	Response.Message = &servicereply.Message{
 		Id:     err.GetUserError(),
 		Values: err.GetReplyValues(),

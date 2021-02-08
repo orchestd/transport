@@ -53,7 +53,13 @@ func (h *httpClientWrapper) do(c context.Context,httpMethod string ,payload inte
 	if sErr != nil{
 		return sErr
 	}
-	req, err := http.NewRequest(httpMethod,url,  b)
+	var req *http.Request
+	var err error
+	if b != nil {
+		req, err = http.NewRequest(httpMethod,url,  b)
+	} else {
+		req, err = http.NewRequest(httpMethod,url,  nil)
+	}
 	if err != nil {
 		return NewInternalServiceError( err).WithLogMessage(fmt.Sprintf("Cannot marshal request to %s" , url))
 	}
