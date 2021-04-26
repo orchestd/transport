@@ -7,12 +7,13 @@ import (
 	"bitbucket.org/HeilaSystems/transport/client"
 	"bytes"
 	"context"
-	"encoding/json"
+	jsoniter "github.com/json-iterator/go"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 )
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type httpClientWrapper struct {
 	client *http.Client

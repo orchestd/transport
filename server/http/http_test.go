@@ -3,9 +3,9 @@ package http
 import (
 	. "bitbucket.org/HeilaSystems/servicereply"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/smartystreets/goconvey/convey"
 	"go.uber.org/fx"
 	"io/ioutil"
@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type TestInterface struct {
 }
