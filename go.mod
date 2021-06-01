@@ -3,7 +3,7 @@ module bitbucket.org/HeilaSystems/transport
 go 1.14
 
 require (
-	bitbucket.org/HeilaSystems/dependencybundler v0.2.2
+	bitbucket.org/HeilaSystems/dependencybundler v0.5.0
 	bitbucket.org/HeilaSystems/servicereply v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/smartystreets/goconvey v1.6.4
