@@ -104,6 +104,12 @@ func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{}
 		Id:     err.GetUserError(),
 		Values: err.GetReplyValues(),
 	}
+
+	if refreshToken, ok := err.GetReplyValues()["refreshToken"]; ok{
+		delete(err.GetReplyValues(), "refreshToken")
+		c.Header("refresh-token", refreshToken.(string))
+	}
+
 	if err.IsSuccess() && res != nil {
 		Response.Data = res
 	}
