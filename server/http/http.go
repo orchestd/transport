@@ -105,9 +105,11 @@ func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{}
 		Values: err.GetReplyValues(),
 	}
 
-	if refreshToken, ok := err.GetReplyValues()["refreshToken"]; ok{
-		delete(err.GetReplyValues(), "refreshToken")
-		c.Header("refresh-token", refreshToken.(string))
+	if replyHeadersValues, ok := err.GetReplyValues()["replyHeadersValues"].(map[string]string); ok{
+		for key, val := range replyHeadersValues{
+			c.Header(key, val)
+		}
+		delete(err.GetReplyValues(), "replyHeadersValues")
 	}
 
 	if err.IsSuccess() && res != nil {
