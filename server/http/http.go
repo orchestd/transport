@@ -239,7 +239,9 @@ func IsAliveGinHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Headers", "token, x-requested-with")
 	c.Header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS , PATCH")
 	c.Header("Access-Control-Allow-Credentials", "true")
-	c.String(200 , "yes")
+	c.JSON(200 , map[string]interface{}{
+		"status" : "ok",
+	})
 }
 
 type HttpLog struct {
