@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"bitbucket.org/HeilaSystems/servicereply/status"
+	"bitbucket.org/HeilaSystems/transport/server"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -124,30 +125,46 @@ func GinSuccessReply(c *gin.Context, reply interface{}) {
 	serviceReply.Data = reply
 	c.JSON(http.StatusOK, serviceReply)
 }
+func runHandler(router *gin.Engine , handler server.IHandler ){
+	switch handler.GetHttpType() {
+	case server.MethodPost:
+		router.POST(handler.GetMethod(),handler.GetHandler()...)
+	case server.MethodGet:
+		router.GET(handler.GetMethod(),handler.GetHandler()...)
+	case server.MethodPut:
+		router.PUT(handler.GetMethod() , handler.GetHandler()...)
+	case server.MethodDelete:
+		router.DELETE(handler.GetMethod() , handler.GetHandler()...)
+	}
+}
 
-func NewGinRouter(contextInterceptors []gin.HandlerFunc , interceptors []gin.HandlerFunc) (*gin.Engine, error) {
-	router := gin.New()
+func InitializeGinRouter(router *gin.Engine , contextInterceptors, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
+	router.Use(gin.Recovery())
+	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
+	if len(systemHandlers)> 0 {
+		for _ , h := range systemHandlers {
+			runHandler(router, h)
+		}
+	}
+
+	api := router.Group("/")
+
 	if len(contextInterceptors) > 0 {
 		for _, interceptor := range contextInterceptors {
 			if interceptor != nil {
-				router.Use(interceptor)
+				api.Use(interceptor)
 			}
 		}
 	}
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
-				router.Use(interceptor)
+				api.Use(interceptor)
 			}
 		}
 	}
-	//router.Use(gzip.Gzip(gzip.DefaultCompression)) // gzip compression
-	router.Use(gin.Recovery())
 
-	//recovery middleware
-	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
-
-	return router, nil
+	return api, nil
 }
 
 const (
@@ -155,7 +172,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, contextInterceptors,interceptors []gin.HandlerFunc) *gin.Engine {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, contextInterceptors,interceptors []gin.HandlerFunc,systemHandlers []server.IHandler) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -168,12 +185,12 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		t := defaultTimeout
 		WriteTimeout = &t
 	}
-	h, _ := NewGinRouter(contextInterceptors,interceptors)
+	router := gin.New()
+	h, _ := InitializeGinRouter(router,contextInterceptors,interceptors,systemHandlers)
 
 	s := &http.Server{
-
 		Addr:         ":" + *port, //appConf.ListenOnPort,
-		Handler:      h,
+		Handler:      router,
 		ReadTimeout:  *readTimeout,
 		WriteTimeout: *WriteTimeout, //getHttpRespTimeoutSeconds(appConf),
 	}
@@ -217,13 +234,13 @@ func getHandlerRequestStruct(f interface{}) interface{} {
 }
 
 func IsAliveGinHandler(c *gin.Context) {
-	c.Header("Content-Type", "text/json")
+	//c.Header("Content-Type", "text/json")
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("charset", "utf-8")
 	c.Header("Access-Control-Allow-Headers", "token, x-requested-with")
 	c.Header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS , PATCH")
 	c.Header("Access-Control-Allow-Credentials", "true")
-	c.Writer.Write([]byte("yes"))
+	c.String(200 , "yes")
 }
 
 type HttpLog struct {
