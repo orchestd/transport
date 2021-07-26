@@ -234,7 +234,6 @@ func getHandlerRequestStruct(f interface{}) interface{} {
 }
 
 func IsAliveGinHandler(c *gin.Context) {
-	//c.Header("Content-Type", "text/json")
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("charset", "utf-8")
 	c.Header("Access-Control-Allow-Headers", "token, x-requested-with")
