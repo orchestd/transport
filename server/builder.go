@@ -56,7 +56,6 @@ type HttpBuilder interface {
 	SetWriteTimeout(d time.Duration) HttpBuilder
 	SetReadTimeout(d time.Duration) HttpBuilder
 	SetLogger(logger log.Logger) HttpBuilder
-	AddContextInterceptors(...gin.HandlerFunc) HttpBuilder
 	AddInterceptors(...gin.HandlerFunc) HttpBuilder
 	AddSystemHandlers(...IHandler) HttpBuilder
 	Build(lifecycle fx.Lifecycle) gin.IRouter
