@@ -138,7 +138,7 @@ func runHandler(router *gin.Engine , handler server.IHandler ){
 	}
 }
 
-func InitializeGinRouter(router *gin.Engine , contextInterceptors, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
+func InitializeGinRouter(router *gin.Engine , interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
 	router.Use(gin.Recovery())
 	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
 	if len(systemHandlers)> 0 {
@@ -149,13 +149,6 @@ func InitializeGinRouter(router *gin.Engine , contextInterceptors, interceptors 
 
 	api := router.Group("/")
 
-	if len(contextInterceptors) > 0 {
-		for _, interceptor := range contextInterceptors {
-			if interceptor != nil {
-				api.Use(interceptor)
-			}
-		}
-	}
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
@@ -172,7 +165,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, contextInterceptors,interceptors []gin.HandlerFunc,systemHandlers []server.IHandler) gin.IRouter {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, interceptors []gin.HandlerFunc,systemHandlers []server.IHandler) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -186,8 +179,7 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		WriteTimeout = &t
 	}
 	router := gin.New()
-	h, _ := InitializeGinRouter(router,contextInterceptors,interceptors,systemHandlers)
-
+	h, _ := InitializeGinRouter(router,interceptors,systemHandlers)
 	s := &http.Server{
 		Addr:         ":" + *port, //appConf.ListenOnPort,
 		Handler:      router,
