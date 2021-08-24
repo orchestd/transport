@@ -139,21 +139,24 @@ func runHandler(router *gin.Engine , handler server.IHandler ){
 }
 
 func InitializeGinRouter(router *gin.Engine , interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
+	if len(interceptors) > 0 {
+		for _, interceptor := range interceptors {
+			if interceptor != nil {
+				router.Use(interceptor)
+			}
+		}
+	}
+
 	router.Use(gin.Recovery())
+
+	api := router.Group("/")
+
+
+
 	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
 	if len(systemHandlers)> 0 {
 		for _ , h := range systemHandlers {
 			runHandler(router, h)
-		}
-	}
-
-	api := router.Group("/")
-
-	if len(interceptors) > 0 {
-		for _, interceptor := range interceptors {
-			if interceptor != nil {
-				api.Use(interceptor)
-			}
 		}
 	}
 
