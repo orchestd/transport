@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"time"
 )
+
 //func CallAlternativeMethodByTypeName(alternativeName string ,mFunction interface{}, newH interface{} , ginContext *gin.Context) (interface{} , servicereply.ServiceReply){
 //	c := reflect.ValueOf(ginContext)
 //	req := reflect.Indirect(reflect.ValueOf(newH))
@@ -37,7 +38,7 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" {
 			if err := ginCtx.ShouldBindJSON(&newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
-				GinErrorReply(ginCtx, internalError,nil)
+				GinErrorReply(ginCtx, internalError, nil)
 				return
 			}
 		}
@@ -49,7 +50,13 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 				return nil, servicereply.NewInternalServiceError(nil).WithLogMessage("mFunction must be a function")
 			}
 			responseArr := reflect.ValueOf(mFunction).Call([]reflect.Value{c, req})
-			if len(responseArr) == 2 {
+			if len(responseArr) == 1 {
+				if !responseArr[0].IsNil() {
+					return nil, responseArr[0].Interface().(servicereply.ServiceReply)
+				} else {
+					return nil, nil
+				}
+			} else if len(responseArr) == 2 {
 				if !responseArr[1].IsNil() {
 					return responseArr[0].Interface(), responseArr[1].Interface().(servicereply.ServiceReply)
 				}
@@ -61,7 +68,7 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		}
 
 		if response, err := exec(); err != nil {
-			GinErrorReply(ginCtx, err,response)
+			GinErrorReply(ginCtx, err, response)
 		} else {
 			GinSuccessReply(ginCtx, response)
 		}
@@ -80,13 +87,13 @@ func IsFunc(v interface{}) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Func
 }
 
-func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{} ) {
+func GinErrorReply(c *gin.Context, err servicereply.ServiceReply, res interface{}) {
 	statuserr := status.GetStatus(err.GetErrorType())
 	if statuserr != status.SuccessStatus {
-		statusCtx := context.WithValue(c.Request.Context(),"status",statuserr)
+		statusCtx := context.WithValue(c.Request.Context(), "status", statuserr)
 		c.Request = c.Request.WithContext(statusCtx)
 		if len(err.GetUserError()) > 0 {
-			messageCtx := context.WithValue(c.Request.Context(),"userMessageId",err.GetUserError())
+			messageCtx := context.WithValue(c.Request.Context(), "userMessageId", err.GetUserError())
 			c.Request = c.Request.WithContext(messageCtx)
 		}
 	}
@@ -106,8 +113,8 @@ func GinErrorReply(c *gin.Context, err servicereply.ServiceReply,res interface{}
 		Values: err.GetReplyValues(),
 	}
 
-	if replyHeadersValues, ok := err.GetReplyValues()["replyHeadersValues"].(map[string]string); ok{
-		for key, val := range replyHeadersValues{
+	if replyHeadersValues, ok := err.GetReplyValues()["replyHeadersValues"].(map[string]string); ok {
+		for key, val := range replyHeadersValues {
 			c.Header(key, val)
 		}
 		delete(err.GetReplyValues(), "replyHeadersValues")
@@ -125,37 +132,39 @@ func GinSuccessReply(c *gin.Context, reply interface{}) {
 	serviceReply.Data = reply
 	c.JSON(http.StatusOK, serviceReply)
 }
-func runHandler(router *gin.Engine , handler server.IHandler ){
+func runHandler(router *gin.Engine, handler server.IHandler) {
 	switch handler.GetHttpType() {
 	case server.MethodPost:
-		router.POST(handler.GetMethod(),handler.GetHandler()...)
+		router.POST(handler.GetMethod(), handler.GetHandler()...)
 	case server.MethodGet:
-		router.GET(handler.GetMethod(),handler.GetHandler()...)
+		router.GET(handler.GetMethod(), handler.GetHandler()...)
 	case server.MethodPut:
-		router.PUT(handler.GetMethod() , handler.GetHandler()...)
+		router.PUT(handler.GetMethod(), handler.GetHandler()...)
 	case server.MethodDelete:
-		router.DELETE(handler.GetMethod() , handler.GetHandler()...)
+		router.DELETE(handler.GetMethod(), handler.GetHandler()...)
 	}
 }
 
-func InitializeGinRouter(router *gin.Engine , interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
+func InitializeGinRouter(router *gin.Engine, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
+
+	stats := router.Group("/")
+	stats.Static("/static", "./static")
+
+	api := router.Group("/")
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
-				router.Use(interceptor)
+				api.Use(interceptor)
 			}
 		}
 	}
 
 	router.Use(gin.Recovery())
 
-	api := router.Group("/")
-
-
-
 	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
-	if len(systemHandlers)> 0 {
-		for _ , h := range systemHandlers {
+
+	if len(systemHandlers) > 0 {
+		for _, h := range systemHandlers {
 			runHandler(router, h)
 		}
 	}
@@ -168,7 +177,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration,logger log.Logger, interceptors []gin.HandlerFunc,systemHandlers []server.IHandler) gin.IRouter {
+func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, logger log.Logger, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -182,7 +191,7 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 		WriteTimeout = &t
 	}
 	router := gin.New()
-	h, _ := InitializeGinRouter(router,interceptors,systemHandlers)
+	h, _ := InitializeGinRouter(router, interceptors, systemHandlers)
 	s := &http.Server{
 		Addr:         ":" + *port, //appConf.ListenOnPort,
 		Handler:      router,
@@ -199,13 +208,13 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 			// In production, we'd want to separate the Listen and Serve phases for
 			// better error-handling.
 			if logger != nil {
-				logger.Info(ctx , "HTTP service listening on port %s" , *port)
+				logger.Info(ctx, "HTTP service listening on port %s", *port)
 			}
 			return s.ListenAndServe()
 		},
 		OnStop: func(ctx context.Context) error {
 			if logger != nil {
-				logger.Info(ctx , "Shuting service down")
+				logger.Info(ctx, "Shuting service down")
 			}
 			return s.Shutdown(ctx)
 		},
@@ -234,16 +243,16 @@ func IsAliveGinHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Headers", "token, x-requested-with")
 	c.Header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS , PATCH")
 	c.Header("Access-Control-Allow-Credentials", "true")
-	c.JSON(200 , map[string]interface{}{
-		"status" : "ok",
+	c.JSON(200, map[string]interface{}{
+		"status": "ok",
 	})
 }
 
 type HttpLog struct {
-	Source string `json:"source"`
-	Action string `json:"action"`
-	LogMessage *string `json:"logMessage"`
-	LogValues map[string]interface{} `json:"logValues"`
+	Source     string                 `json:"source"`
+	Action     string                 `json:"action"`
+	LogMessage *string                `json:"logMessage"`
+	LogValues  map[string]interface{} `json:"logValues"`
 }
 
 func (h HttpLog) GetSource() string {
@@ -263,8 +272,8 @@ func (h HttpLog) GetLogValues() map[string]interface{} {
 }
 
 type IHttpLog interface {
-	GetSource()string
-	GetAction()string
-	GetLogMessage()*string
-	GetLogValues()map[string]interface{}
+	GetSource() string
+	GetAction() string
+	GetLogMessage() *string
+	GetLogValues() map[string]interface{}
 }
