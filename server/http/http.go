@@ -146,18 +146,18 @@ func runHandler(router *gin.Engine, handler server.IHandler) {
 }
 
 func InitializeGinRouter(router *gin.Engine, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
-
 	stats := router.Group("/")
 	stats.Static("/static", "./static")
 
-	api := router.Group("/")
 	if len(interceptors) > 0 {
 		for _, interceptor := range interceptors {
 			if interceptor != nil {
-				api.Use(interceptor)
+				router.Use(interceptor)
 			}
 		}
 	}
+
+	api := router.Group("/")
 
 	router.Use(gin.Recovery())
 
