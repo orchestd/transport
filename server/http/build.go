@@ -2,6 +2,7 @@ package http
 
 import (
 	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
+	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bitbucket.org/HeilaSystems/transport/server"
 	"container/list"
 	"github.com/gin-gonic/gin"
@@ -9,13 +10,14 @@ import (
 	"time"
 )
 
-type httpServerSettings struct {
-	Port                    *string
-	WriteTimeOut            *time.Duration
-	ReadTimeOut             *time.Duration
-	Logger                  log.Logger
-	interceptors            []gin.HandlerFunc
-	systemHandlers  []server.IHandler
+type HttpServerSettings struct {
+	Port                     *string
+	WriteTimeOut             *time.Duration
+	ReadTimeOut              *time.Duration
+	Logger                   log.Logger
+	interceptors             []gin.HandlerFunc
+	systemHandlers           []server.IHandler
+	DiscoveryServiceProvider discoveryService.DiscoveryServiceProvider
 }
 
 type defaultHttpServerConfigBuilder struct {
@@ -27,52 +29,59 @@ func Builder() server.HttpBuilder {
 }
 
 func (d *defaultHttpServerConfigBuilder) SetPort(port string) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.Port = &port
 	})
 	return d
 }
 
 func (d *defaultHttpServerConfigBuilder) SetWriteTimeout(duration time.Duration) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.WriteTimeOut = &duration
 	})
 	return d
 }
 
 func (d *defaultHttpServerConfigBuilder) SetReadTimeout(duration time.Duration) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.ReadTimeOut = &duration
 	})
 	return d
 }
 func (d *defaultHttpServerConfigBuilder) SetLogger(logger log.Logger) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.Logger = logger
 	})
 	return d
 }
 
 func (d *defaultHttpServerConfigBuilder) AddInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
-		cfg.interceptors =  append(cfg.interceptors , interceptors...)
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
+		cfg.interceptors = append(cfg.interceptors, interceptors...)
 	})
 	return d
 }
 
 func (d *defaultHttpServerConfigBuilder) AddSystemHandlers(handlers ...server.IHandler) server.HttpBuilder {
-	d.ll.PushBack(func(cfg *httpServerSettings) {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.systemHandlers = handlers
 	})
 	return d
 }
 
-
 func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
-	httpCfg := &httpServerSettings{}
+	httpCfg := &HttpServerSettings{}
 	for e := d.ll.Front(); e != nil; e = e.Next() {
-		f := e.Value.(func(cfg *httpServerSettings))
+		f := e.Value.(func(cfg *HttpServerSettings))
 		f(httpCfg)
 	}
-	return NewGinServer(lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut, httpCfg.Logger, httpCfg.interceptors, httpCfg.systemHandlers)
+
+	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut, httpCfg.Logger, httpCfg.interceptors, httpCfg.systemHandlers)
+}
+
+func (d *defaultHttpServerConfigBuilder) SetDiscoveryServiceProvider(ds discoveryService.DiscoveryServiceProvider) server.HttpBuilder {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
+		cfg.DiscoveryServiceProvider = ds
+	})
+	return d
 }

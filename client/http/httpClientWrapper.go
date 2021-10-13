@@ -5,19 +5,21 @@ import (
 	. "bitbucket.org/HeilaSystems/servicereply"
 	"bitbucket.org/HeilaSystems/servicereply/status"
 	"bitbucket.org/HeilaSystems/transport/client"
+	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bytes"
 	"context"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"net/http"
-	"os"
 )
+
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type httpClientWrapper struct {
-	client *http.Client
-	conf   configuration.Config
+	client                   *http.Client
+	conf                     configuration.Config
+	discoveryServiceProvider discoveryService.DiscoveryServiceProvider
 }
 
 func (h *httpClientWrapper) Call(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
@@ -40,15 +42,24 @@ func (h *httpClientWrapper) Delete(c context.Context, host, handler string, targ
 	return h.do(c, http.MethodDelete, nil, host, handler, target, headers, false)
 }
 
+func (h *httpClientWrapper) SetDiscoveryServiceProvider(dsp discoveryService.DiscoveryServiceProvider) {
+	h.discoveryServiceProvider = dsp
+}
+
 func NewHttpClientWrapper(client *http.Client, conf configuration.Config) (client.HttpClient, error) {
 	return &httpClientWrapper{client: client, conf: conf}, nil
 }
 
 func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload interface{}, host, handler string, target interface{}, headers map[string]string, internal bool) (srvReply ServiceReply) {
-	url := fmt.Sprintf("http://%s/%s", host, handler)
-	if overrideHost := os.Getenv(host + urlKeyword); len(overrideHost) > 0 {
-		url = fmt.Sprintf("%s/%s", overrideHost, handler)
+	var url string
+	if sRep := h.discoveryServiceProvider.GetAddress(host); !sRep.IsSuccess() {
+		return sRep
+	} else if v, ok := sRep.GetReplyValues()["address"]; !ok {
+		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
+	} else {
+		url = fmt.Sprintf("%s/%s", v, handler)
 	}
+
 	srvReply = NewNil()
 	b, sErr := getPayload(payload, url)
 	if sErr != nil {
@@ -68,7 +79,7 @@ func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload int
 	for key, value := range headers {
 		req.Header.Add(key, value)
 	}
-	if _ , ok := headers["Content-Type"]; !ok {
+	if _, ok := headers["Content-Type"]; !ok {
 		req.Header.Add("Content-Type", "application/json")
 	}
 
@@ -130,8 +141,8 @@ func unmarshalDataToStruct(data []byte, target interface{}, logStrings ...interf
 	if data == nil {
 		return NewInternalServiceError(nil).WithLogMessage(fmt.Sprintf("Cannot unmarshal empty response from %s to target struct", logStrings...))
 	}
-	if f,ok := target.(Marshaler);ok {
-		if err := f.Unmarshal(data);err != nil {
+	if f, ok := target.(Marshaler); ok {
+		if err := f.Unmarshal(data); err != nil {
 			return NewInternalServiceError(err)
 		}
 		return nil
@@ -151,5 +162,3 @@ func getPayload(payload interface{}, url string) (*bytes.Buffer, ServiceReply) {
 	}
 	return nil, nil
 }
-
-const urlKeyword = "Url"

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
+	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"time"
@@ -10,9 +11,9 @@ import (
 type HTTPType string
 
 const (
-	MethodGet  HTTPType = "GET"
-	MethodPost HTTPType = "POST"
-	MethodPut HTTPType = "PUT"
+	MethodGet    HTTPType = "GET"
+	MethodPost   HTTPType = "POST"
+	MethodPut    HTTPType = "PUT"
 	MethodDelete HTTPType = "DELETE"
 )
 
@@ -34,8 +35,7 @@ func (h *Handler) GetHandler() []gin.HandlerFunc {
 	return h.Handler
 }
 
-
-func NewHttpHandler(httpType HTTPType , method string , handler ...gin.HandlerFunc) func() IHandler {
+func NewHttpHandler(httpType HTTPType, method string, handler ...gin.HandlerFunc) func() IHandler {
 	return func() IHandler {
 		return &Handler{
 			HttpType: httpType,
@@ -59,4 +59,5 @@ type HttpBuilder interface {
 	AddInterceptors(...gin.HandlerFunc) HttpBuilder
 	AddSystemHandlers(...IHandler) HttpBuilder
 	Build(lifecycle fx.Lifecycle) gin.IRouter
+	SetDiscoveryServiceProvider(dsp discoveryService.DiscoveryServiceProvider) HttpBuilder
 }

@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/HeilaSystems/servicereply"
 	httpError "bitbucket.org/HeilaSystems/servicereply/http"
 	"bitbucket.org/HeilaSystems/servicereply/status"
+	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bitbucket.org/HeilaSystems/transport/server"
 	"context"
 	"fmt"
@@ -177,7 +178,7 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, logger log.Logger, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) gin.IRouter {
+func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time.Duration, logger log.Logger, interceptors []gin.HandlerFunc, systemHandlers []server.IHandler) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -210,7 +211,14 @@ func NewGinServer(lc fx.Lifecycle, port *string, readTimeout, WriteTimeout *time
 			if logger != nil {
 				logger.Info(ctx, "HTTP service listening on port %s", *port)
 			}
-			return s.ListenAndServe()
+			go func() {
+				if sRep := dsp.Register(); !sRep.IsSuccess() {
+					panic(sRep.GetError()) //would a go func always be enough and fall after ListenAndServe ? should I just logErr ?
+				}
+			}()
+
+			s.ListenAndServe()
+			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			if logger != nil {
@@ -244,7 +252,7 @@ func IsAliveGinHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS , PATCH")
 	c.Header("Access-Control-Allow-Credentials", "true")
 	c.JSON(200, map[string]interface{}{
-		"status": "ok",
+		"status": "success",
 	})
 }
 
