@@ -162,7 +162,7 @@ func InitializeGinRouter(router *gin.Engine, interceptors []gin.HandlerFunc, sys
 
 	router.Use(gin.Recovery())
 
-	router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
+	//router.GET("/isAlive", IsAliveGinHandler) // IsAlive handler
 
 	if len(systemHandlers) > 0 {
 		for _, h := range systemHandlers {
