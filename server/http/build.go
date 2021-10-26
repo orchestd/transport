@@ -15,7 +15,8 @@ type HttpServerSettings struct {
 	WriteTimeOut             *time.Duration
 	ReadTimeOut              *time.Duration
 	Logger                   log.Logger
-	interceptors             []gin.HandlerFunc
+	apiInterceptors          []gin.HandlerFunc
+	routerInterceptors       []gin.HandlerFunc
 	systemHandlers           []server.IHandler
 	DiscoveryServiceProvider discoveryService.DiscoveryServiceProvider
 }
@@ -55,9 +56,16 @@ func (d *defaultHttpServerConfigBuilder) SetLogger(logger log.Logger) server.Htt
 	return d
 }
 
-func (d *defaultHttpServerConfigBuilder) AddInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) AddApiInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *HttpServerSettings) {
-		cfg.interceptors = append(cfg.interceptors, interceptors...)
+		cfg.apiInterceptors = append(cfg.apiInterceptors, interceptors...)
+	})
+	return d
+}
+
+func (d *defaultHttpServerConfigBuilder) AddRouterInterceptors(interceptors ...gin.HandlerFunc) server.HttpBuilder {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
+		cfg.routerInterceptors = append(cfg.routerInterceptors, interceptors...)
 	})
 	return d
 }
@@ -76,7 +84,8 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 		f(httpCfg)
 	}
 
-	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut, httpCfg.Logger, httpCfg.interceptors, httpCfg.systemHandlers)
+	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut,
+		httpCfg.Logger, httpCfg.apiInterceptors, httpCfg.routerInterceptors, httpCfg.systemHandlers)
 }
 
 func (d *defaultHttpServerConfigBuilder) SetDiscoveryServiceProvider(ds discoveryService.DiscoveryServiceProvider) server.HttpBuilder {
