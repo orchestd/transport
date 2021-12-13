@@ -43,7 +43,7 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 				return
 			}
 		} else {
-			if err := ginCtx.ShouldBindQuery(&newH); err != nil {
+			if err := ginCtx.ShouldBindQuery(newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidQuery").WithError(err).WithLogMessage("Cannot parse query request to struct")
 				GinErrorReply(ginCtx, internalError, nil)
 				return
