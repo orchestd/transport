@@ -9,9 +9,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	xj "github.com/basgys/goxml2json"
 	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -28,6 +33,10 @@ func (h *httpClientWrapper) Call(c context.Context, payload interface{}, host, h
 
 func (h *httpClientWrapper) Post(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
 	return h.do(c, http.MethodPost, payload, host, handler, target, headers, false)
+}
+
+func (h *httpClientWrapper) PostFormXml(url string, postData, headers map[string]string, timeout time.Duration) (string, ServiceReply) {
+	return h.doFormXml(url, postData, headers, timeout)
 }
 
 func (h *httpClientWrapper) Get(c context.Context, host, handler string, target interface{}, headers map[string]string) ServiceReply {
@@ -48,6 +57,92 @@ func (h *httpClientWrapper) SetDiscoveryServiceProvider(dsp discoveryService.Dis
 
 func NewHttpClientWrapper(client *http.Client, conf configuration.Config) (client.HttpClient, error) {
 	return &httpClientWrapper{client: client, conf: conf}, nil
+}
+
+func (h *httpClientWrapper) doFormXml(uri string, postData, headers map[string]string, timeout time.Duration) (string, ServiceReply) {
+
+	data := url.Values{}
+	for k, v := range postData {
+		data.Set(k, v)
+	}
+	client := &http.Client{
+		Timeout: timeout,
+	}
+	request, err := http.NewRequest("POST", uri, bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return "", NewInternalServiceError(err)
+
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+	for key, value := range headers {
+		request.Header.Add(key, value)
+	}
+
+	resp, err := client.Do(request)
+	if err != nil {
+		return "", NewInternalServiceError(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", NewInternalServiceError(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == 200 {
+		resJson, err := xj.Convert(strings.NewReader(isoBytesToUnicode([]int32(string(body)))))
+		if err != nil {
+			return "", NewInternalServiceError(err)
+		}
+		return resJson.String(), nil
+	} else if resp.StatusCode == 403 {
+		return "", NewInternalServiceError(fmt.Errorf("403"))
+	}
+	return "", NewInternalServiceError(fmt.Errorf("403"))
+}
+
+var isoToUnicodeMap = map[int32]uint8{
+	0x05D0: 0xE0,
+	0x05D1: 0xE1,
+	0x05D2: 0xE2,
+	0x05D3: 0xE3,
+	0x05D4: 0xE4,
+	0x05D5: 0xE5,
+	0x05D6: 0xE6,
+	0x05D7: 0xE7,
+	0x05D8: 0xE8,
+	0x05D9: 0xE9,
+	0x05DA: 0xEA,
+	0x05DB: 0xEB,
+	0x05DC: 0xEC,
+	0x05DD: 0xED,
+	0x05DE: 0xEE,
+	0x05DF: 0xEF,
+	0x05E0: 0xF0,
+	0x05E1: 0xF1,
+	0x05E2: 0xF2,
+	0x05E3: 0xF3,
+	0x05E4: 0xF4,
+	0x05E5: 0xF5,
+	0x05E6: 0xF6,
+	0x05E7: 0xF7,
+	0x05E8: 0xF8,
+	0x05E9: 0xF9,
+	0x05EA: 0xFA,
+	0x200E: 0xFD,
+	0x200F: 0xFE,
+}
+
+func isoBytesToUnicode(bytes []int32) string {
+	codePoints := make([]byte, len(bytes))
+	for n, v := range bytes {
+		unicode, ok := isoToUnicodeMap[v]
+		if !ok {
+			unicode = byte(v)
+		}
+		codePoints[n] = unicode
+	}
+	return string(codePoints)
 }
 
 func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload interface{}, host, handler string, target interface{}, headers map[string]string, internal bool) (srvReply ServiceReply) {
