@@ -9,14 +9,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	xj "github.com/basgys/goxml2json"
 	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
-	"time"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -36,7 +33,7 @@ func (h *httpClientWrapper) Post(c context.Context, payload interface{}, host, h
 }
 
 func (h *httpClientWrapper) PostForm(c context.Context, uri string, postData, headers map[string]string) ([]byte, ServiceReply) {
-	return h.doPostForm(c, url, postData, headers)
+	return h.doPostForm(c, uri, postData, headers)
 }
 
 func (h *httpClientWrapper) Get(c context.Context, host, handler string, target interface{}, headers map[string]string) ServiceReply {
