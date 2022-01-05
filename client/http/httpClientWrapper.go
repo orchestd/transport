@@ -12,6 +12,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -28,6 +30,10 @@ func (h *httpClientWrapper) Call(c context.Context, payload interface{}, host, h
 
 func (h *httpClientWrapper) Post(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
 	return h.do(c, http.MethodPost, payload, host, handler, target, headers, false)
+}
+
+func (h *httpClientWrapper) PostForm(c context.Context, uri string, postData, headers map[string]string) ([]byte, ServiceReply) {
+	return h.doPostForm(c, uri, postData, headers)
 }
 
 func (h *httpClientWrapper) Get(c context.Context, host, handler string, target interface{}, headers map[string]string) ServiceReply {
@@ -48,6 +54,40 @@ func (h *httpClientWrapper) SetDiscoveryServiceProvider(dsp discoveryService.Dis
 
 func NewHttpClientWrapper(client *http.Client, conf configuration.Config) (client.HttpClient, error) {
 	return &httpClientWrapper{client: client, conf: conf}, nil
+}
+
+func (h *httpClientWrapper) doPostForm(c context.Context, uri string, postData, headers map[string]string) ([]byte, ServiceReply) {
+	data := url.Values{}
+	for k, v := range postData {
+		data.Set(k, v)
+	}
+
+	request, err := http.NewRequest("POST", uri, bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return nil, NewInternalServiceError(err)
+	}
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+	for key, value := range headers {
+		request.Header.Add(key, value)
+	}
+
+	request = request.WithContext(c)
+
+	resp, err := h.client.Do(request)
+	if err != nil {
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("couldn't send request"))
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("cannot read response"))
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("got response status code %s", resp.StatusCode))
+	}
+	return body, nil
 }
 
 func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload interface{}, host, handler string, target interface{}, headers map[string]string, internal bool) (srvReply ServiceReply) {

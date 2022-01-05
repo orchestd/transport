@@ -49,7 +49,6 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 				return
 			}
 		}
-
 		exec := func() (interface{}, servicereply.ServiceReply) {
 			c := reflect.ValueOf(ginCtx.Request.Context())
 			req := reflect.Indirect(reflect.ValueOf(newH))
