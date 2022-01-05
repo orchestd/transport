@@ -77,15 +77,15 @@ func (h *httpClientWrapper) doPostForm(c context.Context, uri string, postData, 
 
 	resp, err := h.client.Do(request)
 	if err != nil {
-		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("couldn't send request to %s", uri))
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("couldn't send request"))
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("cannot read response from %s", uri))
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("cannot read response"))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("got response status code %s from %s", resp.StatusCode, uri))
+		return nil, NewIoError(err).WithLogMessage(fmt.Sprintf("got response status code %s", resp.StatusCode))
 	}
 	return body, nil
 }
