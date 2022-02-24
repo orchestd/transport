@@ -19,6 +19,7 @@ type HttpServerSettings struct {
 	routerInterceptors       []gin.HandlerFunc
 	systemHandlers           []server.IHandler
 	DiscoveryServiceProvider discoveryService.DiscoveryServiceProvider
+	Statics                  map[string]string
 }
 
 type defaultHttpServerConfigBuilder struct {
@@ -27,6 +28,13 @@ type defaultHttpServerConfigBuilder struct {
 
 func Builder() server.HttpBuilder {
 	return &defaultHttpServerConfigBuilder{ll: list.New()}
+}
+
+func (d *defaultHttpServerConfigBuilder) SetStatics(statics map[string]string) server.HttpBuilder {
+	d.ll.PushBack(func(cfg *HttpServerSettings) {
+		cfg.Statics = statics
+	})
+	return d
 }
 
 func (d *defaultHttpServerConfigBuilder) SetPort(port string) server.HttpBuilder {
@@ -85,7 +93,7 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 	}
 
 	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut,
-		httpCfg.Logger, httpCfg.apiInterceptors, httpCfg.routerInterceptors, httpCfg.systemHandlers)
+		httpCfg.Logger, httpCfg.apiInterceptors, httpCfg.routerInterceptors, httpCfg.systemHandlers, httpCfg.Statics)
 }
 
 func (d *defaultHttpServerConfigBuilder) SetDiscoveryServiceProvider(ds discoveryService.DiscoveryServiceProvider) server.HttpBuilder {

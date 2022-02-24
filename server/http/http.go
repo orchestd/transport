@@ -151,9 +151,12 @@ func runHandler(router *gin.Engine, handler server.IHandler) {
 	}
 }
 
-func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors []gin.HandlerFunc, systemHandlers []server.IHandler) (gin.IRouter, error) {
-	stats := router.Group("/")
-	stats.Static("/static", "./static")
+func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors []gin.HandlerFunc,
+	systemHandlers []server.IHandler, statics map[string]string) (gin.IRouter, error) {
+
+	for k, v := range statics {
+		router.Static(k, v)
+	}
 
 	if len(routerInterceptors) > 0 {
 		for _, interceptor := range routerInterceptors {
@@ -191,7 +194,7 @@ const (
 
 func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle, port *string, readTimeout,
 	WriteTimeout *time.Duration, logger log.Logger, apiInterceptors []gin.HandlerFunc, routerInterceptors []gin.HandlerFunc,
-	systemHandlers []server.IHandler) gin.IRouter {
+	systemHandlers []server.IHandler, statics map[string]string) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p
@@ -205,7 +208,7 @@ func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle
 		WriteTimeout = &t
 	}
 	router := gin.New()
-	h, _ := InitializeGinRouter(router, apiInterceptors, routerInterceptors, systemHandlers)
+	h, _ := InitializeGinRouter(router, apiInterceptors, routerInterceptors, systemHandlers, statics)
 	s := &http.Server{
 		Addr:         ":" + *port, //appConf.ListenOnPort,
 		Handler:      router,

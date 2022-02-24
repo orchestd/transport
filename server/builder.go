@@ -53,6 +53,7 @@ type IHandler interface {
 
 type HttpBuilder interface {
 	SetPort(port string) HttpBuilder
+	SetStatics(statics map[string]string) HttpBuilder
 	SetWriteTimeout(d time.Duration) HttpBuilder
 	SetReadTimeout(d time.Duration) HttpBuilder
 	SetLogger(logger log.Logger) HttpBuilder
