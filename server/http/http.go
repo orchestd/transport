@@ -233,7 +233,13 @@ func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle
 				}
 			}()
 
-			go s.ListenAndServe()
+			go func() {
+				err := s.ListenAndServe()
+				if err != nil {
+					panic(err)
+				}
+			}()
+
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
