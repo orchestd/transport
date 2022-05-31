@@ -175,11 +175,8 @@ type Marshaler interface {
 }
 
 func unmarshalDataToStruct(data []byte, target interface{}, logStrings ...interface{}) ServiceReply {
-	if target == nil {
+	if target == nil || data == nil{
 		return nil
-	}
-	if data == nil {
-		return NewInternalServiceError(nil).WithLogMessage(fmt.Sprintf("Cannot unmarshal empty response from %s to target struct", logStrings...))
 	}
 	if f, ok := target.(Marshaler); ok {
 		if err := f.Unmarshal(data); err != nil {
