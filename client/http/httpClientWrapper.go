@@ -8,6 +8,7 @@ import (
 	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bytes"
 	"context"
+	"encoding/xml"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
@@ -17,6 +18,11 @@ import (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+const (
+	ContentTypeJSON = "json"
+	ContentTypeXML  = "xml"
+)
 
 type httpClientWrapper struct {
 	client                   *http.Client
@@ -38,6 +44,20 @@ func (h *httpClientWrapper) PostForm(c context.Context, uri string, postData, he
 
 func (h *httpClientWrapper) Get(c context.Context, host, handler string, target interface{}, headers map[string]string) ServiceReply {
 	return h.do(c, http.MethodGet, nil, host, handler, target, headers, false)
+}
+
+func (h *httpClientWrapper) ExternalGet(c context.Context, host, handler string, payload map[string]string, target interface{},
+	headers map[string]string, contentType string) ServiceReply {
+	var payloadURLEncoded *string
+	if payload != nil {
+		v := url.Values{}
+		for p := range payload {
+			v.Add(p, payload[p])
+		}
+		t := v.Encode()
+		payloadURLEncoded = &t
+	}
+	return h.doFull(c, http.MethodGet, payloadURLEncoded, host, handler, target, headers, false, contentType)
 }
 
 func (h *httpClientWrapper) Put(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
@@ -90,7 +110,13 @@ func (h *httpClientWrapper) doPostForm(c context.Context, uri string, postData, 
 	return body, nil
 }
 
-func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload interface{}, host, handler string, target interface{}, headers map[string]string, internal bool) (srvReply ServiceReply) {
+func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload interface{}, host, handler string,
+	target interface{}, headers map[string]string, internal bool) (srvReply ServiceReply) {
+	return h.doFull(c, httpMethod, payload, host, handler, target, headers, internal, ContentTypeJSON)
+}
+
+func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload interface{}, host, handler string,
+	target interface{}, headers map[string]string, internal bool, contentType string) (srvReply ServiceReply) {
 	var url string
 	if sRep := h.discoveryServiceProvider.GetAddress(host); !sRep.IsSuccess() {
 		return sRep
@@ -107,20 +133,36 @@ func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload int
 	}
 	var req *http.Request
 	var err error
-	if b != nil {
-		req, err = http.NewRequest(httpMethod, url, b)
+	if httpMethod != http.MethodGet {
+		if b != nil {
+			req, err = http.NewRequest(httpMethod, url, b)
+		} else {
+			req, err = http.NewRequest(httpMethod, url, nil)
+		}
+		if err != nil {
+			return NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("Cannot marshal request to %s", url))
+		}
 	} else {
+		if payload != nil {
+			if queryString, ok := payload.(*string); !ok {
+
+			} else {
+				url = url + "?" + *queryString
+			}
+		}
 		req, err = http.NewRequest(httpMethod, url, nil)
 	}
-	if err != nil {
-		return NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("Cannot marshal request to %s", url))
-	}
+
 	req = req.WithContext(c)
 	for key, value := range headers {
 		req.Header.Add(key, value)
 	}
 	if _, ok := headers["Content-Type"]; !ok {
-		req.Header.Add("Content-Type", "application/json")
+		if contentType == ContentTypeJSON {
+			req.Header.Add("Content-Type", "application/json")
+		} else if contentType == ContentTypeXML {
+			req.Header.Add("Content-Type", "application/xml")
+		}
 	}
 
 	resp, err := h.client.Do(req)
@@ -164,7 +206,7 @@ func (h *httpClientWrapper) do(c context.Context, httpMethod string, payload int
 			body = nil
 		}
 	}
-	if err := unmarshalDataToStruct(body, target, url); err != nil {
+	if err := unmarshalDataToStruct(body, target, contentType, url); err != nil {
 		return err
 	}
 	return
@@ -174,8 +216,8 @@ type Marshaler interface {
 	Unmarshal(data []byte) error
 }
 
-func unmarshalDataToStruct(data []byte, target interface{}, logStrings ...interface{}) ServiceReply {
-	if target == nil || data == nil{
+func unmarshalDataToStruct(data []byte, target interface{}, contentType string, logStrings ...interface{}) ServiceReply {
+	if target == nil || data == nil {
 		return nil
 	}
 	if f, ok := target.(Marshaler); ok {
@@ -184,11 +226,23 @@ func unmarshalDataToStruct(data []byte, target interface{}, logStrings ...interf
 		}
 		return nil
 	}
-	if err := json.Unmarshal(data, &target); err != nil {
-		return NewInternalServiceError(err).WithLogMessage("cannot read response")
+	if contentType == ContentTypeJSON || contentType == "" {
+		if err := json.Unmarshal(data, &target); err != nil {
+			return NewInternalServiceError(err).WithLogMessage("cannot read response")
+		}
+	} else if contentType == ContentTypeXML {
+		if err := xml.Unmarshal(data, &target); err != nil {
+			return NewInternalServiceError(err).WithLogMessage("cannot read response")
+		} else {
+			fmt.Println(target)
+		}
+	} else {
+		return NewBadRequestError("can't unmarshal response into target struct. unsupported content type: " + contentType)
 	}
+
 	return nil
 }
+
 func getPayload(payload interface{}, url string) (*bytes.Buffer, ServiceReply) {
 	if payload != nil {
 		request, err := json.Marshal(payload)
