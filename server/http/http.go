@@ -33,7 +33,36 @@ import (
 //		return nil, servicereply.NewInternalServiceError(err)
 //	}
 //}
-func HandleFunc(mFunction interface{}) func(context *gin.Context) {
+
+type transportHooks interface {
+	OnExecSuccess(c *gin.Context, res interface{})
+	OnExecFail(c *gin.Context, err servicereply.ServiceReply, res interface{})
+}
+
+type JsonReplyTransportHooks struct {
+}
+
+func (jr JsonReplyTransportHooks) OnExecSuccess(c *gin.Context, res interface{}) {
+	GinSuccessReply(c, res)
+}
+
+func (jr JsonReplyTransportHooks) OnExecFail(c *gin.Context, err servicereply.ServiceReply, res interface{}) {
+	GinErrorReply(c, err, res)
+}
+
+type FileReplyTransportHooks struct {
+	FileName string
+}
+
+func (jr FileReplyTransportHooks) OnExecSuccess(c *gin.Context, res interface{}) {
+	c.File("static/" + jr.FileName + ".html")
+}
+
+func (jr FileReplyTransportHooks) OnExecFail(c *gin.Context, err servicereply.ServiceReply, res interface{}) {
+	c.File("static/serviceError.html")
+}
+
+func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(context *gin.Context) {
 	return func(ginCtx *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
 		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" {
@@ -74,11 +103,19 @@ func HandleFunc(mFunction interface{}) func(context *gin.Context) {
 		}
 
 		if response, err := exec(); err != nil {
-			GinErrorReply(ginCtx, err, response)
+			hooks.OnExecFail(ginCtx, err, response)
 		} else {
-			GinSuccessReply(ginCtx, response)
+			hooks.OnExecSuccess(ginCtx, response)
 		}
 	}
+}
+
+func HandleFunc(mFunction interface{}) func(context *gin.Context) {
+	return HandleFuncWithHook(mFunction, JsonReplyTransportHooks{})
+}
+
+func FileReplyHandleFunc(mFunction interface{}, fileName string) func(context *gin.Context) {
+	return HandleFuncWithHook(mFunction, FileReplyTransportHooks{FileName: fileName})
 }
 
 func createInnerHandlers(v reflect.Value) interface{} {
