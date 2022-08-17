@@ -183,7 +183,7 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 		if srvError.Status != status.SuccessStatus {
 			resType := status.GetTypeByStatus(srvError.GetStatus())
 			msgValues := srvError.GetMessageValues()
-			srvReply = NewServiceError(&resType, nil, srvError.GetMessageId(), 1)
+			srvReply = NewServiceError(&resType, fmt.Errorf(string(srvError.GetStatus())), srvError.GetMessageId(), 1)
 			if msgValues != nil {
 				srvReply = srvReply.WithReplyValues(*msgValues)
 			}
