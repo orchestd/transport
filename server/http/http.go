@@ -7,10 +7,12 @@ import (
 	"bitbucket.org/HeilaSystems/servicereply/status"
 	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bitbucket.org/HeilaSystems/transport/server"
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"html/template"
 	"net/http"
 	"reflect"
 	"time"
@@ -55,7 +57,20 @@ type FileReplyTransportHooks struct {
 }
 
 func (jr FileReplyTransportHooks) OnExecSuccess(c *gin.Context, res interface{}) {
-	c.File("static/" + jr.FileName + ".html")
+	t, err := template.ParseFiles("static/" + jr.FileName)
+	if err != nil {
+		GinErrorReply(c, servicereply.NewInternalServiceError(fmt.Errorf("can't parse template:"+jr.FileName+" error: "+err.Error())), nil)
+		return
+	}
+	var buffer bytes.Buffer
+	err = t.Execute(&buffer, res)
+	if err != nil {
+		GinErrorReply(c, servicereply.NewInternalServiceError(fmt.Errorf("can't execute template:"+jr.FileName+" error: "+err.Error())), nil)
+		return
+	}
+	b := buffer.Bytes()
+
+	c.Data(http.StatusOK, http.DetectContentType(b), b)
 }
 
 func (jr FileReplyTransportHooks) OnExecFail(c *gin.Context, err servicereply.ServiceReply, res interface{}) {
