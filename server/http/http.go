@@ -1,16 +1,16 @@
 package http
 
 import (
-	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
-	"bitbucket.org/HeilaSystems/servicereply"
-	httpError "bitbucket.org/HeilaSystems/servicereply/http"
-	"bitbucket.org/HeilaSystems/servicereply/status"
-	"bitbucket.org/HeilaSystems/transport/discoveryService"
-	"bitbucket.org/HeilaSystems/transport/server"
 	"bytes"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/orchestd/dependencybundler/interfaces/log"
+	"github.com/orchestd/servicereply"
+	httpError "github.com/orchestd/servicereply/http"
+	"github.com/orchestd/servicereply/status"
+	"github.com/orchestd/transport/discoveryService"
+	"github.com/orchestd/transport/server"
 	"go.uber.org/fx"
 	"html/template"
 	"net/http"

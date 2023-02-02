@@ -1,11 +1,11 @@
 package http
 
 import (
-	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/log"
-	"bitbucket.org/HeilaSystems/transport/discoveryService"
-	"bitbucket.org/HeilaSystems/transport/server"
 	"container/list"
 	"github.com/gin-gonic/gin"
+	"github.com/orchestd/dependencybundler/interfaces/log"
+	"github.com/orchestd/transport/discoveryService"
+	"github.com/orchestd/transport/server"
 	"go.uber.org/fx"
 	"time"
 )

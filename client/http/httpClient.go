@@ -1,18 +1,18 @@
 package http
 
 import (
-	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
-	"bitbucket.org/HeilaSystems/transport/client"
 	"container/list"
 	"crypto/tls"
 	"fmt"
+	"github.com/orchestd/dependencybundler/interfaces/configuration"
+	"github.com/orchestd/transport/client"
 	"net/http"
 )
 
 type httpClientBuilderConfig struct {
 	predefinedClient *http.Client
 	interceptors     []client.HTTPClientInterceptor
-	conf configuration.Config
+	conf             configuration.Config
 }
 
 type builderImpl struct {
@@ -32,7 +32,6 @@ func (impl *builderImpl) SetConfig(conf configuration.Config) client.HTTPClientB
 	return impl
 }
 
-
 func (impl *builderImpl) AddInterceptors(interceptors ...client.HTTPClientInterceptor) client.HTTPClientBuilder {
 	impl.ll.PushBack(func(cfg *httpClientBuilderConfig) {
 		if len(interceptors) > 0 {
@@ -49,7 +48,7 @@ func (impl *builderImpl) WithPreconfiguredClient(client *http.Client) client.HTT
 	return impl
 }
 
-func (impl *builderImpl) Build() (client.HttpClient,error) {
+func (impl *builderImpl) Build() (client.HttpClient, error) {
 	var client = &http.Client{}
 	var conf configuration.Config
 	if impl != nil {
@@ -67,13 +66,12 @@ func (impl *builderImpl) Build() (client.HttpClient,error) {
 		}
 		if client.Transport == nil {
 			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-			client.Transport =	http.DefaultTransport
+			client.Transport = http.DefaultTransport
 		}
-
 
 		client.Transport = prepareCustomRoundTripper(client.Transport, cfg.interceptors...)
 	}
-	return NewHttpClientWrapper(client,conf)
+	return NewHttpClientWrapper(client, conf)
 }
 
 type customRoundTripper struct {
@@ -109,4 +107,5 @@ func uniteInterceptors(interceptors []client.HTTPClientInterceptor) client.HTTPC
 		return headInterceptor(req, tailHandler)
 	}
 }
+
 var _ client.HTTPClientBuilder = (*builderImpl)(nil)

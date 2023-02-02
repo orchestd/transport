@@ -1,7 +1,6 @@
 package http
 
 import (
-	. "bitbucket.org/HeilaSystems/servicereply"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -25,23 +24,22 @@ func NewTestInterface() TestInterface {
 }
 
 type TestReq struct {
-
 }
 
 type TestRes struct {
 	Hello string `json:"hello"`
 }
 
-func (i TestInterface) Test(c context.Context,req TestReq)(TestRes, ServiceReply){
-	return TestRes{Hello: "world"},nil
+func (i TestInterface) Test(c context.Context, req TestReq) (TestRes, ServiceReply) {
+	return TestRes{Hello: "world"}, nil
 }
 
 func Test_Main(t *testing.T) {
-	testHandler :=  func(router *gin.Engine,m TestInterface) {
+	testHandler := func(router *gin.Engine, m TestInterface) {
 		router.GET("/", HandleFunc(m.Test))
 	}
 
-	convey.Convey("Given a test handler with empty request ",t, func() {
+	convey.Convey("Given a test handler with empty request ", t, func() {
 		app := fx.New(
 			fx.Provide(
 				NewGinServer,
@@ -57,18 +55,18 @@ func Test_Main(t *testing.T) {
 		convey.Convey("Get response from the handler ", func() {
 			resp, err := http.Get("http://localhost:8080/")
 			convey.Convey("http shouldn't return error", func() {
-				convey.So(err,convey.ShouldBeNil)
+				convey.So(err, convey.ShouldBeNil)
 			})
 			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			convey.Convey("body read shouldnt return error", func() {
-				convey.So(err,convey.ShouldBeNil)
+				convey.So(err, convey.ShouldBeNil)
 			})
 			var res TestRes
 			fmt.Println(string(body))
 			err = json.Unmarshal(body, &res)
 			convey.Convey("Error should be nil", func() {
-				convey.So(err,convey.ShouldBeNil)
+				convey.So(err, convey.ShouldBeNil)
 			})
 		})
 	})

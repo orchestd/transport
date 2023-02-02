@@ -1,9 +1,9 @@
 package client
 
 import (
-	"bitbucket.org/HeilaSystems/servicereply"
-	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"context"
+	"github.com/orchestd/servicereply"
+	"github.com/orchestd/transport/discoveryService"
 )
 
 type HttpClient interface {

@@ -1,16 +1,15 @@
 package http
 
 import (
-	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
-	. "bitbucket.org/HeilaSystems/servicereply"
-	"bitbucket.org/HeilaSystems/servicereply/status"
-	"bitbucket.org/HeilaSystems/transport/client"
-	"bitbucket.org/HeilaSystems/transport/discoveryService"
 	"bytes"
 	"context"
 	"encoding/xml"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/orchestd/dependencybundler/interfaces/configuration"
+	"github.com/orchestd/servicereply/status"
+	"github.com/orchestd/transport/client"
+	"github.com/orchestd/transport/discoveryService"
 	"io/ioutil"
 	"net/http"
 	"net/url"

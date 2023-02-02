@@ -1,7 +1,7 @@
 package client
 
 import (
-	"bitbucket.org/HeilaSystems/dependencybundler/interfaces/configuration"
+	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	"net/http"
 )
 
@@ -17,7 +17,7 @@ type HTTPClientBuilder interface {
 	SetConfig(conf configuration.Config) HTTPClientBuilder
 	AddInterceptors(...HTTPClientInterceptor) HTTPClientBuilder
 	WithPreconfiguredClient(*http.Client) HTTPClientBuilder
-	Build() (HttpClient,error)
+	Build() (HttpClient, error)
 }
 
 // NewHTTPClientBuilder REST HTTP builder

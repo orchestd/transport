@@ -1,8 +1,8 @@
 package contextValuesToHeaders
 
 import (
-	"bitbucket.org/HeilaSystems/transport/client"
 	"fmt"
+	"github.com/orchestd/transport/client"
 	"net/http"
 )
 

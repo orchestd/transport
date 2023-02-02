@@ -1,7 +1,7 @@
 package discoveryService
 
 import (
-	"bitbucket.org/HeilaSystems/servicereply"
+	"github.com/orchestd/servicereply"
 )
 
 type DiscoveryServiceProvider interface {
