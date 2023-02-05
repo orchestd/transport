@@ -7,6 +7,7 @@ import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
+	. "github.com/orchestd/servicereply"
 	"github.com/orchestd/servicereply/status"
 	"github.com/orchestd/transport/client"
 	"github.com/orchestd/transport/discoveryService"
