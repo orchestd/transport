@@ -3,7 +3,7 @@ module github.com/orchestd/transport
 go 1.14
 
 require (
-	github.com/orchestd/dependencybundler v0.40.3
+	github.com/orchestd/dependencybundler v0.40.4
 	github.com/orchestd/servicereply v0.0.5
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-playground/validator/v10 v10.11.0 // indirect
