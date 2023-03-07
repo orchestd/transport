@@ -122,6 +122,8 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 		return sRep
 	} else if v, ok := sRep.GetReplyValues()["address"]; !ok {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
+	} else if v == host || v == "" {
+		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
 		url = fmt.Sprintf("%s/%s", v, handler)
 	}
