@@ -6,7 +6,7 @@ type TransportConfiguration struct {
 	WriteTimeOutMs string   `json:"writeTimeOutMs,omitempty"`
 	ContextHeaders []string `json:"contextHeaders,omitempty"`
 
-	DiscoveryServiceProvider *string `json:"discoveryServiceProvider"`
-
-	AssetRoots interface{} `json:"assetRoots,omitempty"`
+	DiscoveryServiceProvider *string     `json:"discoveryServiceProvider"`
+	DspTemplate              *string     `json:"dspTemplate"`
+	AssetRoots               interface{} `json:"assetRoots,omitempty"`
 }
