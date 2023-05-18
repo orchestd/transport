@@ -7,6 +7,6 @@ type TransportConfiguration struct {
 	ContextHeaders []string `json:"contextHeaders,omitempty"`
 
 	DiscoveryServiceProvider *string     `json:"discoveryServiceProvider"`
-	DspTemplate              *string     `json:"dspTemplate"`
+	DspTemplate              *string     `json:"dspTemplate,omitempty"`
 	AssetRoots               interface{} `json:"assetRoots,omitempty"`
 }
