@@ -24,7 +24,7 @@ type recaptchaParameters struct {
 	recaptchaSecretKey string  `json:"recaptchaSecretKey"`
 	siteVerifyURL      string  `json:"siteVerifyURL"`
 	action             string  `json:"action"`
-	score              float64 `json:"score"`
+	expectedScore      float64 `json:"expectedScore"`
 }
 
 type Recaptcha interface {
@@ -34,14 +34,13 @@ type Recaptcha interface {
 
 func NewRecaptcha() Recaptcha {
 	return &recaptchaParameters{
-		recaptchaSecretKey: "6LfAa1EpAAAAAH5ryaXEpv0EpLYd5B2-pQ4FTdk5",
-		siteVerifyURL:      "https://www.google.com/recaptcha/api/siteverify",
-		score:              Score,
+		siteVerifyURL: "https://www.google.com/recaptcha/api/siteverify",
+		expectedScore: Score,
 	}
 }
 
 func (r recaptchaParameters) CheckByAction(c context.Context, siteKey, action string) error {
-	return r.Check(c, siteKey, action, r.score)
+	return r.Check(c, siteKey, action, r.expectedScore)
 }
 
 func (r recaptchaParameters) Check(c context.Context, siteKey, action string, score float64) error {
