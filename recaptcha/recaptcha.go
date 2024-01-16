@@ -1,6 +1,7 @@
 package recaptcha
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 )
 
 const siteVerifyURL = "https://www.google.com/recaptcha/api/siteverify"
-const score = 0.5
+const Score = 0.5
 
 type SiteVerifyResponse struct {
 	Success     bool      `json:"success"`
@@ -19,7 +20,31 @@ type SiteVerifyResponse struct {
 	ErrorCodes  []string  `json:"error-codes"`
 }
 
-func CheckRecaptcha(recaptchaSecretKey, response, action string) error {
+type recaptchaParameters struct {
+	recaptchaSecretKey string  `json:"recaptchaSecretKey"`
+	siteVerifyURL      string  `json:"siteVerifyURL"`
+	action             string  `json:"action"`
+	score              float64 `json:"score"`
+}
+
+type Recaptcha interface {
+	Check(c context.Context, siteKey, action string, score float64) error
+	CheckByAction(c context.Context, siteKey, action string) error
+}
+
+func NewRecaptcha() Recaptcha {
+	return &recaptchaParameters{
+		recaptchaSecretKey: "6LfAa1EpAAAAAH5ryaXEpv0EpLYd5B2-pQ4FTdk5",
+		siteVerifyURL:      "https://www.google.com/recaptcha/api/siteverify",
+		score:              Score,
+	}
+}
+
+func (r recaptchaParameters) CheckByAction(c context.Context, siteKey, action string) error {
+	return r.Check(c, siteKey, action, r.score)
+}
+
+func (r recaptchaParameters) Check(c context.Context, siteKey, action string, score float64) error {
 	req, err := http.NewRequest(http.MethodPost, siteVerifyURL, nil)
 	if err != nil {
 		return fmt.Errorf("couldn't create recaptcha NewRequest to siteverify ", err)
@@ -27,8 +52,8 @@ func CheckRecaptcha(recaptchaSecretKey, response, action string) error {
 
 	// Add necessary request parameters.
 	q := req.URL.Query()
-	q.Add("secret", recaptchaSecretKey)
-	q.Add("response", response)
+	q.Add("secret", r.recaptchaSecretKey)
+	q.Add("response", siteKey)
 	req.URL.RawQuery = q.Encode()
 
 	// Make request
@@ -55,8 +80,10 @@ func CheckRecaptcha(recaptchaSecretKey, response, action string) error {
 	}
 
 	// Check response action.
-	if body.Action != action {
-		return fmt.Errorf("mismatched recaptcha action", nil, "wrongUNPW")
+	if action != "" {
+		if body.Action != action {
+			return fmt.Errorf("mismatched recaptcha action", nil, "wrongUNPW")
+		}
 	}
 
 	return nil
