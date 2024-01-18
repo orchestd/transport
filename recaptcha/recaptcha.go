@@ -7,7 +7,6 @@ import (
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	"github.com/orchestd/dependencybundler/interfaces/credentials"
 	"github.com/orchestd/dependencybundler/interfaces/transport"
-	. "github.com/orchestd/servicereply"
 	"time"
 )
 
@@ -27,8 +26,8 @@ type GoogleReCapcha struct {
 }
 
 type Recaptcha interface {
-	Check(c context.Context, siteKey, action string, score float64) ServiceReply
-	CheckByAction(c context.Context, siteKey, action string) ServiceReply
+	Check(c context.Context, siteKey, action string, score float64) ([]string, error)
+	CheckByAction(c context.Context, siteKey, action string) ([]string, error)
 }
 
 func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter, httpClient transport.HttpClient) Recaptcha {
@@ -39,19 +38,19 @@ func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter,
 	}
 }
 
-func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string) ServiceReply {
+func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string) ([]string, error) {
 	return r.Check(c, siteKey, action, 0.5)
 }
 
-func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) ServiceReply {
+func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) ([]string, error) {
 	siteVerifyUrl, err := r.conf.Get("siteverifyurl").String()
 	if err != nil {
-		return NewInternalServiceError(err)
+		return []string{}, err
 	}
 
 	recaptchaSecretKey := r.cred.GetCredentials().RecaptchaKey
 	if recaptchaSecretKey == "" {
-		return NewInternalServiceError(fmt.Errorf("RECAPTCHA_KEY not found in Credentials"))
+		return []string{}, fmt.Errorf("RECAPTCHA_KEY not found in Credentials")
 	}
 	data := map[string]string{
 		"secret":   recaptchaSecretKey,
@@ -59,32 +58,29 @@ func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score f
 	}
 	res, err := r.httpClient.PostForm(c, siteVerifyUrl, data, nil)
 	if err != nil {
-		return NewInternalServiceError(err)
+		return []string{}, err
 	}
 
 	var body SiteVerifyResponse
 	if err := json.Unmarshal(res, &body); err != nil {
-		return NewInternalServiceError(fmt.Errorf("couldn't decode recaptcha body response", err))
+		return []string{}, fmt.Errorf("couldn't decode recaptcha body response", err)
 	}
 
 	// Check recaptcha verification success.
 	if !body.Success {
-		return NewRejectedReply("wrongUNPW")
-		//return fmt.Errorf("unsuccessful recaptcha verify request", nil, "wrongUNPW")
+		return body.ErrorCodes, fmt.Errorf("unsuccessful recaptcha verify request", nil, "wrongUNPW")
 	}
 
 	// Check response score.
 	if body.Score < score {
-		return NewRejectedReply("wrongUNPW")
-		//return fmt.Errorf("lower received score than expected", nil, "wrongUNPW")
+		return body.ErrorCodes, fmt.Errorf("lower received score than expected", nil, "wrongUNPW")
 	}
 
 	// Check response action.
 	if action != "" {
 		if body.Action != action {
-			return NewRejectedReply("wrongUNPW")
-			//return fmt.Errorf("mismatched recaptcha action", nil, "wrongUNPW")
+			return body.ErrorCodes, fmt.Errorf("mismatched recaptcha action", nil, "wrongUNPW")
 		}
 	}
-	return nil
+	return []string{}, nil
 }
