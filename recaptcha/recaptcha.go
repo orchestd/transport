@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type Status struct {
+	IsSuccess bool
+	Error     string
+}
+
 type SiteVerifyResponse struct {
 	Success     bool      `json:"success"`
 	Score       float64   `json:"score"`
@@ -26,8 +31,8 @@ type GoogleReCapcha struct {
 }
 
 type Recaptcha interface {
-	Check(c context.Context, siteKey, action string, score float64) ([]string, error)
-	CheckByAction(c context.Context, siteKey, action string) ([]string, error)
+	Check(c context.Context, siteKey, action string, score float64) (Status, error)
+	CheckByAction(c context.Context, siteKey, action string) (Status, error)
 }
 
 func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter, httpClient transport.HttpClient) Recaptcha {
@@ -38,19 +43,20 @@ func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter,
 	}
 }
 
-func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string) ([]string, error) {
+func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string) (Status, error) {
 	return r.Check(c, siteKey, action, 0.5)
 }
 
-func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) ([]string, error) {
+func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) (Status, error) {
+	var result Status
 	siteVerifyUrl, err := r.conf.Get("siteverifyurl").String()
 	if err != nil {
-		return []string{}, err
+		return result, err
 	}
 
 	recaptchaSecretKey := r.cred.GetCredentials().RecaptchaKey
 	if recaptchaSecretKey == "" {
-		return []string{}, fmt.Errorf("RECAPTCHA_KEY not found in Credentials")
+		return result, fmt.Errorf("RECAPTCHA_KEY not found in Credentials")
 	}
 	data := map[string]string{
 		"secret":   recaptchaSecretKey,
@@ -58,29 +64,33 @@ func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score f
 	}
 	res, err := r.httpClient.PostForm(c, siteVerifyUrl, data, nil)
 	if err != nil {
-		return []string{}, err
+		return result, err
 	}
 
 	var body SiteVerifyResponse
 	if err := json.Unmarshal(res, &body); err != nil {
-		return []string{}, fmt.Errorf("couldn't decode recaptcha body response", err)
+		return result, fmt.Errorf("couldn't decode recaptcha body response", err)
 	}
 
 	// Check recaptcha verification success.
 	if !body.Success {
-		return body.ErrorCodes, fmt.Errorf("unsuccessful recaptcha verify request", nil, "wrongUNPW")
+		result.Error = "unsuccessful recaptcha verify request"
+		return result, nil
 	}
 
 	// Check response score.
 	if body.Score < score {
-		return body.ErrorCodes, fmt.Errorf("lower received score than expected", nil, "wrongUNPW")
+		result.Error = "lower received score than expected"
+		return result, nil
 	}
 
 	// Check response action.
 	if action != "" {
 		if body.Action != action {
-			return body.ErrorCodes, fmt.Errorf("mismatched recaptcha action", nil, "wrongUNPW")
+			result.Error = "mismatched recaptcha action"
+			return result, nil
 		}
 	}
-	return []string{}, nil
+	result.IsSuccess = true
+	return result, nil
 }
