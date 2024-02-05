@@ -52,8 +52,12 @@ func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string)
 	score, err := r.conf.Get("googleReCapchaScore").Float64()
 	if err != nil {
 		return Status{}, err
+	} else if score != 0 {
+		return r.Check(c, siteKey, action, score)
+	} else {
+		return Status{IsSuccess: true}, nil
 	}
-	return r.Check(c, siteKey, action, score)
+
 }
 
 func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) (Status, error) {
