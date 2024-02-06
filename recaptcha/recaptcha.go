@@ -26,8 +26,10 @@ type SiteVerifyResponse struct {
 
 type GoogleReCapcha struct {
 	recaptchaSecretKey string
+	siteKey            string
 	conf               configuration.Config
 	httpClient         transport.HttpClient
+	score              float64
 }
 
 type Recaptcha interface {
@@ -40,20 +42,28 @@ func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter,
 	if recaptchaSecretKey == "" {
 		panic("RECAPTCHA_KEY not found in Credentials")
 	}
+	score, err := conf.Get("googleReCaptchaMinScore").Float64()
+	if err != nil {
+		panic("googleReCaptchaMinScore missing from configuration")
+	}
+
+	googleReCapchaUrl, err := conf.Get("googleReCaptchaUrl").String()
+	if err != nil {
+		panic("googleReCaptchaUrl missing from configuration")
+	}
 
 	return GoogleReCapcha{
 		conf:               conf,
 		recaptchaSecretKey: recaptchaSecretKey,
+		score:              score,
+		siteKey:            googleReCapchaUrl,
 		httpClient:         httpClient,
 	}
 }
 
 func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string) (Status, error) {
-	score, err := r.conf.Get("googleReCapchaScore").Float64()
-	if err != nil {
-		return Status{}, err
-	} else if score != 0 {
-		return r.Check(c, siteKey, action, score)
+	if r.score != 0 {
+		return r.Check(c, siteKey, action, r.score)
 	} else {
 		return Status{IsSuccess: true}, nil
 	}
@@ -62,16 +72,13 @@ func (r GoogleReCapcha) CheckByAction(c context.Context, siteKey, action string)
 
 func (r GoogleReCapcha) Check(c context.Context, siteKey, action string, score float64) (Status, error) {
 	var result Status
-	siteVerifyUrl, err := r.conf.Get("googleReCapchaUrl").String()
-	if err != nil {
-		return result, err
-	}
 
 	data := map[string]string{
 		"secret":   r.recaptchaSecretKey,
 		"response": siteKey,
 	}
-	res, err := r.httpClient.PostForm(c, siteVerifyUrl, data, nil)
+
+	res, err := r.httpClient.PostForm(c, r.siteKey, data, nil)
 	if err != nil {
 		return result, err
 	}
