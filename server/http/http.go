@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/orchestd/dependencybundler/interfaces/log"
@@ -287,7 +288,7 @@ func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle
 
 			go func() {
 				err := s.ListenAndServe()
-				if err != nil {
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					panic(err)
 				}
 			}()
