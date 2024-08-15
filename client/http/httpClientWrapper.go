@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -122,7 +123,7 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 		return sRep
 	} else if v, ok := sRep.GetReplyValues()["address"]; !ok {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
-	} else if v == host || v == "" {
+	} else if (v == host && !isHttpSchema(v)) || v == "" {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
 		url = fmt.Sprintf("%s/%s", v, handler)
@@ -254,4 +255,12 @@ func getPayload(payload interface{}, url string) (*bytes.Buffer, ServiceReply) {
 		return bytes.NewBuffer(request), nil
 	}
 	return nil, nil
+}
+
+func isHttpSchema(v interface{}) bool {
+	str, ok := v.(string)
+	if !ok {
+		return false
+	}
+	return strings.Contains(str, "http")
 }
