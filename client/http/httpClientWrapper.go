@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -121,12 +120,12 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 	var url string
 	if sRep := h.discoveryServiceProvider.GetAddress(host); !sRep.IsSuccess() {
 		return sRep
-	} else if v, ok := sRep.GetReplyValues()["address"]; !ok {
+	} else if address, ok := sRep.GetReplyValues()["address"]; !ok {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
-	} else if (v == host && !isHttpSchema(v)) || v == "" {
+	} else if (address == host && !isHttpScheme(address)) || address == "" {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
-		url = fmt.Sprintf("%s/%s", v, handler)
+		url = fmt.Sprintf("%s/%s", address, handler)
 	}
 
 	srvReply = NewNil()
@@ -257,10 +256,15 @@ func getPayload(payload interface{}, url string) (*bytes.Buffer, ServiceReply) {
 	return nil, nil
 }
 
-func isHttpSchema(v interface{}) bool {
+func isHttpScheme(v interface{}) bool {
 	str, ok := v.(string)
 	if !ok {
 		return false
 	}
-	return strings.Contains(strings.ToLower(str), "http")
+	u, err := url.Parse(str)
+	if err != nil {
+		return false
+	}
+
+	return u.Scheme == "http" || u.Scheme == "https"
 }
