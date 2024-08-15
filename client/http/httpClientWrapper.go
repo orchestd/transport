@@ -262,5 +262,5 @@ func isHttpSchema(v interface{}) bool {
 	if !ok {
 		return false
 	}
-	return strings.Contains(str, "http")
+	return strings.Contains(strings.ToLower(str), "http")
 }
