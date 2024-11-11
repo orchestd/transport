@@ -38,6 +38,10 @@ func (h *httpClientWrapper) Post(c context.Context, payload interface{}, host, h
 	return h.do(c, http.MethodPost, payload, host, handler, target, headers, false)
 }
 
+func (h *httpClientWrapper) ExternalPost(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string, contentType string) ServiceReply {
+	return h.doFull(c, http.MethodPost, payload, host, handler, target, headers, false, contentType)
+}
+
 func (h *httpClientWrapper) PostForm(c context.Context, uri string, postData, headers map[string]string) ([]byte, ServiceReply) {
 	return h.doPostForm(c, uri, postData, headers)
 }
@@ -125,11 +129,15 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 	} else if (address == host && !isHttpScheme(address)) || address == "" {
 		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
-		url = fmt.Sprintf("%s/%s", address, handler)
+		if handler == "" {
+			url = fmt.Sprintf("%s", address)
+		} else {
+			url = fmt.Sprintf("%s/%s", address, handler)
+		}
 	}
 
 	srvReply = NewNil()
-	b, sErr := getPayload(payload, url)
+	b, sErr := getPayload(payload, url, contentType)
 	if sErr != nil {
 		return sErr
 	}
@@ -245,9 +253,16 @@ func unmarshalDataToStruct(data []byte, target interface{}, contentType string, 
 	return nil
 }
 
-func getPayload(payload interface{}, url string) (*bytes.Buffer, ServiceReply) {
+func getPayload(payload interface{}, url string, contentType string) (*bytes.Buffer, ServiceReply) {
 	if payload != nil {
-		request, err := json.Marshal(payload)
+		var err error
+		var request []byte
+
+		if contentType == ContentTypeJSON {
+			request, err = json.Marshal(payload)
+		} else if contentType == ContentTypeXML {
+			request, err = xml.Marshal(payload)
+		}
 		if err != nil {
 			return nil, NewInternalServiceError(err).WithLogMessage(fmt.Sprintf("cannot read response from %s", url)).WithLogValues(ValuesMap{"rawResponse": payload})
 		}
