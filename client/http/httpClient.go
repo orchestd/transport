@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	"github.com/orchestd/transport/client"
+	"github.com/orchestd/transport/discoveryService"
 	"net/http"
 )
 
@@ -72,6 +73,15 @@ func (impl *builderImpl) Build() (client.HttpClient, error) {
 		client.Transport = prepareCustomRoundTripper(client.Transport, cfg.interceptors...)
 	}
 	return NewHttpClientWrapper(client, conf)
+}
+
+func (impl *builderImpl) BuildWithDsp(dsp discoveryService.DiscoveryServiceProvider) (client.HttpClient, error) {
+	cl, err := impl.Build()
+	if err != nil {
+		return nil, err
+	}
+	cl.SetDiscoveryServiceProvider(dsp)
+	return cl, err
 }
 
 type customRoundTripper struct {

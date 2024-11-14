@@ -2,6 +2,7 @@ package client
 
 import (
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
+	"github.com/orchestd/transport/discoveryService"
 	"net/http"
 )
 
@@ -18,6 +19,7 @@ type HTTPClientBuilder interface {
 	AddInterceptors(...HTTPClientInterceptor) HTTPClientBuilder
 	WithPreconfiguredClient(*http.Client) HTTPClientBuilder
 	Build() (HttpClient, error)
+	BuildWithDsp(dsp discoveryService.DiscoveryServiceProvider) (HttpClient, error)
 }
 
 // NewHTTPClientBuilder REST HTTP builder
