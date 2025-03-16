@@ -52,16 +52,18 @@ func (h *httpClientWrapper) Get(c context.Context, host, handler string, target 
 
 func (h *httpClientWrapper) ExternalGet(c context.Context, host, handler string, payload map[string]string, target interface{},
 	headers map[string]string, contentType string) ServiceReply {
-	var payloadURLEncoded *string
 	if payload != nil {
+		var payloadURLEncoded *string
 		v := url.Values{}
 		for p := range payload {
 			v.Add(p, payload[p])
 		}
 		t := v.Encode()
 		payloadURLEncoded = &t
+		return h.doFull(c, http.MethodGet, payloadURLEncoded, host, handler, target, headers, false, contentType)
+	} else {
+		return h.doFull(c, http.MethodGet, nil, host, handler, target, headers, false, contentType)
 	}
-	return h.doFull(c, http.MethodGet, payloadURLEncoded, host, handler, target, headers, false, contentType)
 }
 
 func (h *httpClientWrapper) Put(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
