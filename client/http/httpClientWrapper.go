@@ -58,6 +58,7 @@ func (h *httpClientWrapper) ExternalGet(c context.Context, host, handler string,
 		for p := range payload {
 			v.Add(p, payload[p])
 		}
+
 		t := v.Encode()
 		payloadURLEncoded = &t
 		return h.doFull(c, http.MethodGet, payloadURLEncoded, host, handler, target, headers, false, contentType)
