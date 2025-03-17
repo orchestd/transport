@@ -243,8 +243,6 @@ func unmarshalDataToStruct(data []byte, target interface{}, contentType string, 
 	} else if contentType == ContentTypeXML {
 		if err := xml.Unmarshal(data, &target); err != nil {
 			return NewInternalServiceError(err).WithLogMessage("cannot read response")
-		} else {
-			fmt.Println(target)
 		}
 	} else {
 		return NewBadRequestError("can't unmarshal response into target struct. unsupported content type: " + contentType)
