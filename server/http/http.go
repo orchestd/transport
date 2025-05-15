@@ -81,7 +81,8 @@ func (jr FileReplyTransportHooks) OnExecFail(c *gin.Context, err servicereply.Se
 func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(context *gin.Context) {
 	return func(ginCtx *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
-		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" {
+		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" &&
+			!(ginCtx.Request.Header.Get("Content-Type") == "application/x-www-form-urlencoded") {
 			if err := ginCtx.ShouldBindJSON(&newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
 				GinErrorReply(ginCtx, internalError, nil)
