@@ -127,9 +127,9 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 	if sRep := h.discoveryServiceProvider.GetAddress(host); !sRep.IsSuccess() {
 		return sRep
 	} else if address, ok := sRep.GetReplyValues()["address"]; !ok {
-		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
+		return NewInternalServiceError(fmt.Errorf("cant resolve host:%s", host))
 	} else if (address == host && !isHttpScheme(address)) || address == "" {
-		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
+		return NewInternalServiceError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
 		if handler == "" {
 			url = fmt.Sprintf("%s", address)
