@@ -59,11 +59,8 @@ type recaptchaResponse struct {
 
 func (response *recaptchaResponse) getStatus(minimumScore float64, action string) Status {
 	var status Status
-	// Check recaptcha verification success.
-	//if !response.Success {
-	//	status.Error = "Unsuccessful recaptcha verify request"
-	//	return status
-	//}
+
+	// Check recaptcha token validity.
 	if !response.TokenProperties.Valid {
 		status.Error = response.TokenProperties.InvalidReason
 		return status
