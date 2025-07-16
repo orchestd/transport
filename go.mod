@@ -4,6 +4,10 @@ go 1.23.0
 
 toolchain go1.23.11
 
+replace (
+	github.com/orchestd/configurations v0.15.0 => "../configurations"
+)
+
 require (
 	cloud.google.com/go/recaptchaenterprise/v2 v2.20.4
 	github.com/gin-gonic/gin v1.8.1

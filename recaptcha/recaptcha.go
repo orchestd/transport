@@ -1,33 +1,21 @@
 package recaptcha
 
 import (
-	"cloud.google.com/go/recaptchaenterprise/v2/apiv1beta1/recaptchaenterprisepb"
 	"context"
 	"fmt"
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	"github.com/orchestd/dependencybundler/interfaces/credentials"
 	"github.com/orchestd/dependencybundler/interfaces/transport"
-	"time"
+	"os"
 )
 
-type SiteVerifyResponse struct {
-	Success     bool      `json:"success"`
-	Score       float64   `json:"score"`
-	Action      string    `json:"action"`
-	ChallengeTS time.Time `json:"challenge_ts"`
-	Hostname    string    `json:"hostname"`
-	ErrorCodes  []string  `json:"error-codes"`
-}
-
 type GoogleReCapcha struct {
-	recaptchaSecretKey string
-	siteKey            string
-	projectID          string
-	apiKey             string
-	host               string
-	conf               configuration.Config
-	httpClient         transport.HttpClient
-	minimumScore       float64
+	siteKey      string
+	projectId    string
+	apiKey       string
+	host         string
+	httpClient   transport.HttpClient
+	minimumScore float64
 }
 
 type Recaptcha interface {
@@ -36,26 +24,33 @@ type Recaptcha interface {
 }
 
 func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter, httpClient transport.HttpClient) Recaptcha {
-	recaptchaSecretKey := cred.GetCredentials().RecaptchaKey
-	if recaptchaSecretKey == "" {
-		panic("RECAPTCHA_KEY not found in Credentials")
+	apiKey := cred.GetCredentials().GoogleApiKey
+	if apiKey == "" {
+		panic("GOOGLE_API_KEY not found in Credentials")
 	}
+
+	siteKey := cred.GetCredentials().GoogleSiteKey
+	if apiKey == "" {
+		panic("GOOGLE_SITE_KEY not found in Credentials")
+	}
+
 	minimumScore, err := conf.Get("googleReCaptchaMinScore").Float64()
 	if err != nil {
 		panic("googleReCaptchaMinScore missing from configuration")
 	}
 
-	googleReCapchaUrl, err := conf.Get("googleReCaptchaUrl").String()
+	url, err := conf.Get("googleReCaptchaUrl").String()
 	if err != nil {
 		panic("googleReCaptchaUrl missing from configuration")
 	}
 
 	return GoogleReCapcha{
-		conf:               conf,
-		recaptchaSecretKey: recaptchaSecretKey,
-		minimumScore:       minimumScore,
-		siteKey:            googleReCapchaUrl,
-		httpClient:         httpClient,
+		projectId:    os.Getenv("PROJECT_ID"),
+		host:         url,
+		apiKey:       apiKey,
+		minimumScore: minimumScore,
+		siteKey:      siteKey,
+		httpClient:   httpClient,
 	}
 }
 
@@ -69,7 +64,11 @@ func (r GoogleReCapcha) CheckByAction(c context.Context, token, action string) (
 
 func (r GoogleReCapcha) Check(c context.Context, token, action string, minimumScore float64) (Status, error) {
 	assessment, err := r.createAssessment(c, token, action)
-	return assessment.getStatus(float32(minimumScore), action), err
+	if err != nil {
+		return Status{}, err
+	} else {
+		return assessment.getStatus(minimumScore, action), nil
+	}
 }
 
 func (r GoogleReCapcha) createAssessment(c context.Context, token string, recaptchaAction string) (recaptchaResponse, error) {
@@ -82,9 +81,12 @@ func (r GoogleReCapcha) createAssessment(c context.Context, token string, recapt
 		"event": event,
 	}
 
-	var response recaptchaenterprisepb.Assessment
-	host := fmt.Sprintf("%s%s/assesments?key=%s", r.host, r.projectID, r.apiKey)
-	// "https://recaptchaenterprise.googleapis.com/v1/projects/"+r.projectID+"/assessments?key="+"AIz.....61w"
+	var response recaptchaResponse
+	host := fmt.Sprintf("%s%s/assessments?key=%s", r.host, r.projectId, r.apiKey)
 	err := r.httpClient.ExternalPost(c, payload, host, "", &response, nil, transport.ContentTypeJSON)
-	return recaptchaResponse(response), err
+	if err.GetError() != nil {
+		return response, err
+	} else {
+		return response, nil
+	}
 }
