@@ -29,7 +29,7 @@ func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter,
 		panic("GOOGLE_API_KEY not found in Credentials")
 	}
 
-	siteKey := cred.GetCredentials().GoogleSiteKey
+	siteKey := cred.GetCredentials().RecaptchaSiteKey
 	if apiKey == "" {
 		panic("GOOGLE_SITE_KEY not found in Credentials")
 	}
