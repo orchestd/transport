@@ -13,7 +13,6 @@ type GoogleReCapcha struct {
 	siteKey      string
 	projectId    string
 	apiKey       string
-	host         string
 	httpClient   transport.HttpClient
 	minimumScore float64
 }
@@ -39,14 +38,8 @@ func NewRecaptcha(conf configuration.Config, cred credentials.CredentialsGetter,
 		panic("googleReCaptchaMinScore missing from configuration")
 	}
 
-	url, err := conf.Get("googleReCaptchaUrl").String()
-	if err != nil {
-		panic("googleReCaptchaUrl missing from configuration")
-	}
-
 	return GoogleReCapcha{
 		projectId:    os.Getenv("PROJECT_ID"),
-		host:         url,
 		apiKey:       apiKey,
 		minimumScore: minimumScore,
 		siteKey:      siteKey,
@@ -82,8 +75,8 @@ func (r GoogleReCapcha) createAssessment(c context.Context, token string, recapt
 	}
 
 	var response recaptchaResponse
-	host := fmt.Sprintf("%s%s/assessments?key=%s", r.host, r.projectId, r.apiKey)
-	err := r.httpClient.ExternalPost(c, payload, host, "", &response, nil, transport.ContentTypeJSON)
+	method := fmt.Sprintf("%s/assessments?key=%s", r.projectId, r.apiKey)
+	err := r.httpClient.ExternalPost(c, payload, "googleReCaptcha", method, &response, nil, transport.ContentTypeJSON)
 	if err.GetError() != nil {
 		return response, err
 	} else {
