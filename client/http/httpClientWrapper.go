@@ -46,6 +46,10 @@ func (h *httpClientWrapper) PostForm(c context.Context, uri string, postData, he
 	return h.doPostForm(c, uri, postData, headers)
 }
 
+func (h *httpClientWrapper) Patch(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) ServiceReply {
+	return h.do(c, http.MethodPatch, payload, host, handler, target, headers, false)
+}
+
 func (h *httpClientWrapper) Get(c context.Context, host, handler string, target interface{}, headers map[string]string) ServiceReply {
 	return h.do(c, http.MethodGet, nil, host, handler, target, headers, false)
 }
