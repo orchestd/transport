@@ -16,6 +16,7 @@ type HttpClient interface {
 	Put(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) servicereply.ServiceReply
 	Delete(c context.Context, host, handler string, target interface{}, headers map[string]string) servicereply.ServiceReply
 	PostForm(c context.Context, uri string, postData, headers map[string]string) ([]byte, servicereply.ServiceReply)
+	Patch(c context.Context, payload interface{}, host, handler string, target interface{}, headers map[string]string) servicereply.ServiceReply
 	SetDiscoveryServiceProvider(dsp discoveryService.DiscoveryServiceProvider)
 }
 
