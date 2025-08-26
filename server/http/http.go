@@ -5,6 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
+	"net/http"
+	"reflect"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/orchestd/dependencybundler/interfaces/log"
 	"github.com/orchestd/servicereply"
@@ -13,10 +18,6 @@ import (
 	"github.com/orchestd/transport/discoveryService"
 	"github.com/orchestd/transport/server"
 	"go.uber.org/fx"
-	"html/template"
-	"net/http"
-	"reflect"
-	"time"
 )
 
 //func CallAlternativeMethodByTypeName(alternativeName string ,mFunction interface{}, newH interface{} , ginContext *gin.Context) (interface{} , servicereply.ServiceReply){
@@ -119,11 +120,20 @@ func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(contex
 			}
 		}
 
-		if response, err := exec(); err != nil {
-			hooks.OnExecFail(ginCtx, err, response)
-		} else {
+		response, serviceReply := exec()
+		if serviceReply == nil {
 			hooks.OnExecSuccess(ginCtx, response)
+			return
 		}
+
+		ctxWithTraces := context.WithValue(ginCtx.Request.Context(), "traceValues", serviceReply.GetTraceValues())
+		ginCtx.Request = ginCtx.Request.WithContext(ctxWithTraces)
+
+		if serviceReply.IsSuccess() {
+			hooks.OnExecSuccess(ginCtx, response)
+			return
+		}
+		hooks.OnExecFail(ginCtx, serviceReply, response)
 	}
 }
 
