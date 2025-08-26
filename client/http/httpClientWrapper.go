@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	. "github.com/orchestd/servicereply"
 	"github.com/orchestd/servicereply/status"
 	"github.com/orchestd/transport/client"
 	"github.com/orchestd/transport/discoveryService"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -127,9 +128,9 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 	if sRep := h.discoveryServiceProvider.GetAddress(host); !sRep.IsSuccess() {
 		return sRep
 	} else if address, ok := sRep.GetReplyValues()["address"]; !ok {
-		return NewInternalServiceError(fmt.Errorf("cant resolve host:%s", host))
+		return sRep.WithError(fmt.Errorf("cant resolve host:%s", host))
 	} else if (address == host && !isHttpScheme(address)) || address == "" {
-		return NewInternalServiceError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
+		return sRep.WithError(fmt.Errorf("cant resolve host:%s (need to define env or discovery service)", host))
 	} else {
 		if handler == "" {
 			url = fmt.Sprintf("%s", address)
