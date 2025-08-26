@@ -155,8 +155,8 @@ github.com/orchestd/dependencybundler v0.55.0 h1:fSAGlc1gLa7BSZx/3AJZMU/u6KBYEfF
 github.com/orchestd/dependencybundler v0.55.0/go.mod h1:EeVvu1aLaMIMZ0p2k+7U7nylLVX4mSjhAsYJOhAJAdg=
 github.com/orchestd/log v0.1.3 h1:qNpm5Z8Gg7ceQx4BNRCYuR32ZR357WZp2zdOaScJK3I=
 github.com/orchestd/log v0.1.3/go.mod h1:LDNcvWvrbuX2a53hCRGtbLRtjyyPOhnlFpestf+tNfc=
-github.com/orchestd/servicereply v0.0.8 h1:K44zafZZXWW1TiHONmKf8pJtuRaKPwonUDvn8Ofyd78=
-github.com/orchestd/servicereply v0.0.8/go.mod h1:TppC/gKP9QT1SUmlZc3nwugYPWqLX+0t6A7CRSR9Roc=
+github.com/orchestd/servicereply v0.2.0 h1:Pj29PandjrLUuNKE49cDdHcnh6UPSuMmSKUnaaWsHZM=
+github.com/orchestd/servicereply v0.2.0/go.mod h1:TppC/gKP9QT1SUmlZc3nwugYPWqLX+0t6A7CRSR9Roc=
 github.com/orchestd/sharedlib v0.13.3/go.mod h1:vJK8mYWeuBHJWftCZhnjIU5xfvdbR0T4WaHXiS1ZpiA=
 github.com/orchestd/utils v0.0.2/go.mod h1:xBPbClyT7bUP8rIH3em9MOxkPPlTKL4ULoQys+g7Yto=
 github.com/pelletier/go-toml/v2 v2.0.3 h1:h9JoA60e1dVEOpp0PFwJSmt1Htu057NUq9/bUwaO61s=
