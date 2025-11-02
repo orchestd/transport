@@ -126,13 +126,13 @@ func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(contex
 			return
 		}
 
-		ctxWithTraces := context.WithValue(ginCtx.Request.Context(), "traceValues", serviceReply.GetTraceValues())
-		ginCtx.Request = ginCtx.Request.WithContext(ctxWithTraces)
-
-		if serviceReply.IsSuccess() {
-			hooks.OnExecSuccess(ginCtx, response)
-			return
+		traceValues := serviceReply.GetTraceValues()
+		if len(traceValues) > 0 {
+			ctxWithTraces := context.WithValue(ginCtx.Request.Context(), "traceValues", traceValues)
+			ginCtx.Request = ginCtx.Request.WithContext(ctxWithTraces)
 		}
+
+		// works for all reply types (if serviceReply is success then just added additional values to the reply)
 		hooks.OnExecFail(ginCtx, serviceReply, response)
 	}
 }
