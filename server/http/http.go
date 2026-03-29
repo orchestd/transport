@@ -217,10 +217,7 @@ func runHandler(router *gin.Engine, handler server.IHandler) {
 
 func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors []gin.HandlerFunc,
 	systemHandlers []server.IHandler, statics map[string]string) (gin.IRouter, error) {
-
-	for k, v := range statics {
-		router.Static(k, v)
-	}
+	registerStatics(router, statics)
 
 	if len(routerInterceptors) > 0 {
 		for _, interceptor := range routerInterceptors {
@@ -249,6 +246,33 @@ func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors
 	}
 
 	return api, nil
+}
+
+func registerStatics(router *gin.Engine, statics map[string]string) {
+	if len(statics) == 0 {
+		return
+	}
+
+	rootStaticDir, hasRootStatic := statics["/"]
+	for path, dir := range statics {
+		if path == "/" {
+			continue
+		}
+		router.Static(path, dir)
+	}
+
+	if !hasRootStatic {
+		return
+	}
+
+	fileServer := http.FileServer(http.Dir(rootStaticDir))
+	router.NoRoute(func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
 }
 
 const (
