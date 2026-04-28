@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -46,6 +48,13 @@ type transportHooks interface {
 type JsonReplyTransportHooks struct {
 }
 
+type UploadedFile struct {
+	Bytes    []byte
+	MimeType string
+	Filename string
+	Size     int64
+}
+
 func (jr JsonReplyTransportHooks) OnExecSuccess(c *gin.Context, res interface{}) {
 	GinSuccessReply(c, res)
 }
@@ -82,8 +91,19 @@ func (jr FileReplyTransportHooks) OnExecFail(c *gin.Context, err servicereply.Se
 func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(context *gin.Context) {
 	return func(ginCtx *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
-		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" &&
-			!(ginCtx.Request.Header.Get("Content-Type") == "application/x-www-form-urlencoded") {
+		contentType := ginCtx.ContentType()
+		if ginCtx.Request.Method == "POST" && contentType == "multipart/form-data" {
+			if err := ginCtx.ShouldBind(newH); err != nil {
+				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse multipart form request to struct")
+				GinErrorReply(ginCtx, internalError, nil)
+				return
+			}
+			if err := fillUploadedFilesFromMultipartForm(ginCtx, newH); err != nil {
+				internalError := servicereply.NewBadRequestError("invalidMultipartFile").WithError(err).WithLogMessage("Cannot parse multipart file request to struct")
+				GinErrorReply(ginCtx, internalError, nil)
+				return
+			}
+		} else if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" && contentType != "application/x-www-form-urlencoded" {
 			if err := ginCtx.ShouldBindJSON(&newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
 				GinErrorReply(ginCtx, internalError, nil)
@@ -151,6 +171,100 @@ func createInnerHandlers(v reflect.Value) interface{} {
 	} //else - an error ??
 	n := reflect.New(v.Type())
 	return n.Interface()
+}
+
+func resolveUploadedFileFieldName(field reflect.StructField) (string, bool) {
+	jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+	if jsonTag == "-" {
+		return "", true
+	}
+	if jsonTag != "" {
+		return jsonTag, false
+	}
+	return field.Name, false
+}
+
+func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) error {
+	newHValue := reflect.ValueOf(newH)
+	if newHValue.Kind() != reflect.Ptr || newHValue.IsNil() {
+		return fmt.Errorf("newH must be a non-nil pointer to struct")
+	}
+	newHValue = newHValue.Elem()
+	if newHValue.Kind() != reflect.Struct {
+		return fmt.Errorf("newH must point to struct")
+	}
+	newHType := newHValue.Type()
+	baseUploadedFileType := reflect.TypeOf(UploadedFile{})
+
+	for i := 0; i < newHValue.NumField(); i++ {
+		fieldValue := newHValue.Field(i)
+		fieldType := newHType.Field(i)
+		fieldName, skipValue := resolveUploadedFileFieldName(fieldType)
+		fieldValueType := fieldValue.Type()
+
+		valueTypeIsUploadedFile := baseUploadedFileType.AssignableTo(fieldValueType) || baseUploadedFileType.ConvertibleTo(fieldValueType)
+		ptrTypeisUploadedFile := fieldValueType.Kind() == reflect.Ptr &&
+			(baseUploadedFileType.AssignableTo(fieldValueType.Elem()) || baseUploadedFileType.ConvertibleTo(fieldValueType.Elem()))
+		if !valueTypeIsUploadedFile && !ptrTypeisUploadedFile {
+			continue
+		}
+
+		if skipValue {
+			continue
+		}
+		fileHeader, err := ginCtx.FormFile(fieldName)
+		if err != nil {
+			if errors.Is(err, http.ErrMissingFile) {
+				continue
+			}
+			return fmt.Errorf("cannot get file from field %q: %w", fieldName, err)
+		}
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			return fmt.Errorf("cannot open file from field %q: %w", fieldName, err)
+		}
+
+		fileBytes, err := io.ReadAll(file)
+		closeErr := file.Close()
+		if err != nil {
+			return fmt.Errorf("cannot read file from field %q: %w", fieldName, err)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("cannot close file from field %q: %w", fieldName, closeErr)
+		}
+
+		contentType := fileHeader.Header.Get("Content-Type")
+		if contentType == "" {
+			contentType = http.DetectContentType(fileBytes)
+		}
+
+		uploadedFile := UploadedFile{}
+		uploadedFile.Bytes = fileBytes
+		uploadedFile.MimeType = contentType
+		uploadedFile.Filename = fileHeader.Filename
+		uploadedFile.Size = fileHeader.Size
+
+		if !fieldValue.CanSet() {
+			return fmt.Errorf("field %q cannot be set", fieldType.Name)
+		}
+		uploadedFileValue := reflect.ValueOf(uploadedFile)
+		if ptrTypeisUploadedFile {
+			uploadedFilePtr := reflect.New(fieldValueType.Elem())
+			if uploadedFileValue.Type() != fieldValueType.Elem() {
+				uploadedFileValue = uploadedFileValue.Convert(fieldValueType.Elem())
+			}
+			uploadedFilePtr.Elem().Set(uploadedFileValue)
+			fieldValue.Set(uploadedFilePtr)
+			continue
+		}
+		if uploadedFileValue.Type() != fieldValueType {
+			uploadedFileValue = uploadedFileValue.Convert(fieldValueType)
+		}
+		fieldValue.Set(uploadedFileValue)
+	}
+
+	return nil
 }
 
 func IsFunc(v interface{}) bool {
