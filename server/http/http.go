@@ -176,12 +176,12 @@ func createInnerHandlers(v reflect.Value) interface{} {
 func resolveUploadedFileFieldName(field reflect.StructField) (string, bool) {
 	jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
 	if jsonTag == "-" {
-		return "", false
+		return "", true
 	}
 	if jsonTag != "" {
-		return jsonTag, true
+		return jsonTag, false
 	}
-	return field.Name, true
+	return field.Name, false
 }
 
 func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) error {
@@ -199,7 +199,7 @@ func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) e
 	for i := 0; i < newHValue.NumField(); i++ {
 		fieldValue := newHValue.Field(i)
 		fieldType := newHType.Field(i)
-		fieldName, shouldInclude := resolveUploadedFileFieldName(fieldType)
+		fieldName, skipValue := resolveUploadedFileFieldName(fieldType)
 		fieldValueType := fieldValue.Type()
 
 		valueTypeIsUploadedFile := baseUploadedFileType.AssignableTo(fieldValueType) || baseUploadedFileType.ConvertibleTo(fieldValueType)
@@ -209,7 +209,7 @@ func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) e
 			continue
 		}
 
-		if !shouldInclude {
+		if skipValue {
 			continue
 		}
 		fileHeader, err := ginCtx.FormFile(fieldName)
