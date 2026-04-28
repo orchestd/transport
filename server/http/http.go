@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -93,20 +92,19 @@ func HandleFuncWithHook(mFunction interface{}, hooks transportHooks) func(contex
 	return func(ginCtx *gin.Context) {
 		newH := createInnerHandlers(reflect.ValueOf(getHandlerRequestStruct(mFunction)))
 		contentType := ginCtx.ContentType()
-		if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" && contentType != "application/x-www-form-urlencoded" {
-			if contentType == "multipart/form-data" {
-				payload := ginCtx.PostForm("payload")
-				if err := json.Unmarshal([]byte(payload), &newH); err != nil {
-					internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request payload to struct")
-					GinErrorReply(ginCtx, internalError, nil)
-					return
-				}
-				if err := fillUploadedFilesFromMultipartForm(ginCtx, newH); err != nil {
-					internalError := servicereply.NewBadRequestError("invalidMultipartFile").WithError(err).WithLogMessage("Cannot parse multipart file request to struct")
-					GinErrorReply(ginCtx, internalError, nil)
-					return
-				}
-			} else if err := ginCtx.ShouldBindJSON(&newH); err != nil {
+		if ginCtx.Request.Method == "POST" && contentType == "multipart/form-data" {
+			if err := ginCtx.ShouldBind(newH); err != nil {
+				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse multipart form request to struct")
+				GinErrorReply(ginCtx, internalError, nil)
+				return
+			}
+			if err := fillUploadedFilesFromMultipartForm(ginCtx, newH); err != nil {
+				internalError := servicereply.NewBadRequestError("invalidMultipartFile").WithError(err).WithLogMessage("Cannot parse multipart file request to struct")
+				GinErrorReply(ginCtx, internalError, nil)
+				return
+			}
+		} else if ginCtx.Request.Method != "GET" && ginCtx.Request.Method != "DELETE" && contentType != "application/x-www-form-urlencoded" {
+			if err := ginCtx.ShouldBindJSON(&newH); err != nil {
 				internalError := servicereply.NewBadRequestError("invalidJson").WithError(err).WithLogMessage("Cannot parse request to struct")
 				GinErrorReply(ginCtx, internalError, nil)
 				return
