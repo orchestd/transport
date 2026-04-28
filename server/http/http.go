@@ -202,10 +202,10 @@ func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) e
 		fieldName, shouldInclude := resolveUploadedFileFieldName(fieldType)
 		fieldValueType := fieldValue.Type()
 
-		isUploadedFileValueType := baseUploadedFileType.AssignableTo(fieldValueType) || baseUploadedFileType.ConvertibleTo(fieldValueType)
-		isUploadedFilePtrType := fieldValueType.Kind() == reflect.Ptr &&
+		valueTypeIsUploadedFile := baseUploadedFileType.AssignableTo(fieldValueType) || baseUploadedFileType.ConvertibleTo(fieldValueType)
+		ptrTypeisUploadedFile := fieldValueType.Kind() == reflect.Ptr &&
 			(baseUploadedFileType.AssignableTo(fieldValueType.Elem()) || baseUploadedFileType.ConvertibleTo(fieldValueType.Elem()))
-		if !isUploadedFileValueType && !isUploadedFilePtrType {
+		if !valueTypeIsUploadedFile && !ptrTypeisUploadedFile {
 			continue
 		}
 
@@ -249,7 +249,7 @@ func fillUploadedFilesFromMultipartForm(ginCtx *gin.Context, newH interface{}) e
 			return fmt.Errorf("field %q cannot be set", fieldType.Name)
 		}
 		uploadedFileValue := reflect.ValueOf(uploadedFile)
-		if isUploadedFilePtrType {
+		if ptrTypeisUploadedFile {
 			uploadedFilePtr := reflect.New(fieldValueType.Elem())
 			if uploadedFileValue.Type() != fieldValueType.Elem() {
 				uploadedFileValue = uploadedFileValue.Convert(fieldValueType.Elem())
