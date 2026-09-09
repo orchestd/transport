@@ -2,12 +2,13 @@ package http
 
 import (
 	"container/list"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/orchestd/dependencybundler/interfaces/log"
 	"github.com/orchestd/transport/discoveryService"
 	"github.com/orchestd/transport/server"
 	"go.uber.org/fx"
-	"time"
 )
 
 type HttpServerSettings struct {
@@ -92,7 +93,7 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 		f(httpCfg)
 	}
 
-	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut,
+	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.ReadTimeOut, httpCfg.WriteTimeOut,
 		httpCfg.Logger, httpCfg.apiInterceptors, httpCfg.routerInterceptors, httpCfg.systemHandlers, httpCfg.Statics)
 }
 
