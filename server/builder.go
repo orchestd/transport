@@ -1,11 +1,12 @@
 package server
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/orchestd/dependencybundler/interfaces/log"
 	"github.com/orchestd/transport/discoveryService"
 	"go.uber.org/fx"
-	"time"
 )
 
 type HTTPType string
@@ -53,7 +54,7 @@ type IHandler interface {
 
 type HttpBuilder interface {
 	SetPort(port string) HttpBuilder
-	SetStatics(statics map[string]string) HttpBuilder
+	SetStatics(statics []map[string]string) HttpBuilder
 	SetWriteTimeout(d time.Duration) HttpBuilder
 	SetReadTimeout(d time.Duration) HttpBuilder
 	SetLogger(logger log.Logger) HttpBuilder
