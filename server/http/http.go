@@ -330,7 +330,7 @@ func runHandler(router *gin.Engine, handler server.IHandler) {
 }
 
 func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors []gin.HandlerFunc,
-	systemHandlers []server.IHandler, statics map[string]string) (gin.IRouter, error) {
+	systemHandlers []server.IHandler, statics []map[string]string) (gin.IRouter, error) {
 	registerStatics(router, statics)
 
 	if len(routerInterceptors) > 0 {
@@ -362,17 +362,33 @@ func InitializeGinRouter(router *gin.Engine, apiInterceptors, routerInterceptors
 	return api, nil
 }
 
-func registerStatics(router *gin.Engine, statics map[string]string) {
+func registerStatics(router *gin.Engine, statics []map[string]string) {
 	if len(statics) == 0 {
 		return
 	}
-
-	rootStaticDir, hasRootStatic := statics["/"]
-	for path, dir := range statics {
-		if path == "/" {
+	hasRootStatic := false
+	rootStaticDir := ""
+	rootStaticContentType := ""
+	for _, static := range statics {
+		if static["urlPath"] == "/" {
+			hasRootStatic = true
+			rootStaticDir = static["folderPath"]
+			rootStaticContentType = static["contentType"]
 			continue
 		}
-		router.Static(path, dir)
+		contentType := static["contentType"]
+		if contentType == "" {
+			router.Static(static["urlPath"], static["folderPath"])
+		} else {
+			group := router.Group(static["urlPath"], func(c *gin.Context) {
+				if contentType != "" {
+					c.Header("Content-Type", contentType)
+				}
+				c.Next()
+			})
+
+			group.Static("/", static["folderPath"])
+		}
 	}
 
 	if !hasRootStatic {
@@ -385,6 +401,9 @@ func registerStatics(router *gin.Engine, statics map[string]string) {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		if rootStaticContentType != "" {
+			c.Header("Content-Type", rootStaticContentType)
+		}
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
 }
@@ -396,7 +415,7 @@ const (
 
 func NewGinServer(dsp discoveryService.DiscoveryServiceProvider, lc fx.Lifecycle, port *string, readTimeout,
 	WriteTimeout *time.Duration, logger log.Logger, apiInterceptors []gin.HandlerFunc, routerInterceptors []gin.HandlerFunc,
-	systemHandlers []server.IHandler, statics map[string]string) gin.IRouter {
+	systemHandlers []server.IHandler, statics []map[string]string) gin.IRouter {
 	if port == nil {
 		p := defaultPort
 		port = &p

@@ -2,12 +2,13 @@ package http
 
 import (
 	"container/list"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/orchestd/dependencybundler/interfaces/log"
 	"github.com/orchestd/transport/discoveryService"
 	"github.com/orchestd/transport/server"
 	"go.uber.org/fx"
-	"time"
 )
 
 type HttpServerSettings struct {
@@ -19,7 +20,7 @@ type HttpServerSettings struct {
 	routerInterceptors       []gin.HandlerFunc
 	systemHandlers           []server.IHandler
 	DiscoveryServiceProvider discoveryService.DiscoveryServiceProvider
-	Statics                  map[string]string
+	Statics                  []map[string]string
 }
 
 type defaultHttpServerConfigBuilder struct {
@@ -30,7 +31,7 @@ func Builder() server.HttpBuilder {
 	return &defaultHttpServerConfigBuilder{ll: list.New()}
 }
 
-func (d *defaultHttpServerConfigBuilder) SetStatics(statics map[string]string) server.HttpBuilder {
+func (d *defaultHttpServerConfigBuilder) SetStatics(statics []map[string]string) server.HttpBuilder {
 	d.ll.PushBack(func(cfg *HttpServerSettings) {
 		cfg.Statics = statics
 	})
