@@ -93,7 +93,7 @@ func (d *defaultHttpServerConfigBuilder) Build(lc fx.Lifecycle) gin.IRouter {
 		f(httpCfg)
 	}
 
-	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.WriteTimeOut, httpCfg.ReadTimeOut,
+	return NewGinServer(httpCfg.DiscoveryServiceProvider, lc, httpCfg.Port, httpCfg.ReadTimeOut, httpCfg.WriteTimeOut,
 		httpCfg.Logger, httpCfg.apiInterceptors, httpCfg.routerInterceptors, httpCfg.systemHandlers, httpCfg.Statics)
 }
 
