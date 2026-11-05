@@ -224,7 +224,7 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 		}
 	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return NewInternalServiceError(fmt.Errorf("external call to %s returned status %d", url, resp.StatusCode)).
-			WithLogMessage(fmt.Sprintf("status != 200 from %s", url)).
+			WithLogMessage(fmt.Sprintf("non-success status from %s", url)).
 			WithLogValues(ValuesMap{"statusCode": resp.StatusCode, "rawResponse": string(body)}).
 			WithReplyValues(ValuesMap{"statusCode": resp.StatusCode})
 	}
