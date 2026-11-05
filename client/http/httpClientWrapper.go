@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/orchestd/dependencybundler/interfaces/configuration"
 	. "github.com/orchestd/servicereply"
 	"github.com/orchestd/servicereply/status"
 	"github.com/orchestd/transport/client"
 	"github.com/orchestd/transport/discoveryService"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -221,6 +222,11 @@ func (h *httpClientWrapper) doFull(c context.Context, httpMethod string, payload
 		} else {
 			body = nil
 		}
+	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return NewInternalServiceError(fmt.Errorf("external call to %s returned status %d", url, resp.StatusCode)).
+			WithLogMessage(fmt.Sprintf("status != 200 from %s", url)).
+			WithLogValues(ValuesMap{"statusCode": resp.StatusCode, "rawResponse": string(body)}).
+			WithReplyValues(ValuesMap{"statusCode": resp.StatusCode})
 	}
 	if err := unmarshalDataToStruct(body, target, contentType, url); err != nil {
 		return err
